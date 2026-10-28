@@ -54,11 +54,12 @@ async function loadOrders() {
   tableWrap.innerHTML = '<div class="loading-state" style="text-align:center"><div class="skeleton-lg"></div></div>';
   try {
     const { data } = await supabase.from('orders').select('id, order_number, status, total_cents, currency, created_at, delivery_method, tracking_number').order('created_at', { ascending: false });
-    const rows = (data || []).filter(o => (o.order_items || []).some(oi => oi.seller_id === (await getMe()).id));
+    const me = await getMe();
+    const rows = (data || []).filter(o => (o.order_items || []).some(oi => oi.seller_id === me.id));
     if (!rows.length) { tableWrap.innerHTML = '<div class="empty-state"><h2>No orders yet.</h2><p>Orders will appear here once customers buy from your shop.</p></div>'; return; }
     let html = '<table><thead><tr><th>Order</th><th>Product</th><th>Qty</th><th>Buyer</th><th>Method</th><th>Date</th><th>Payment</th><th>Fulfilment</th><th>Actions</th></tr></thead><tbody>';
     rows.forEach(o => {
-      const mine = (o.order_items || []).filter(oi => oi.seller_id === (await getMe()).id);
+      const mine = (o.order_items || []).filter(oi => oi.seller_id === me.id);
       const canShip = o.status === 'paid' || o.status === 'processing';
       html += `
         <tr>
@@ -114,36 +115,4 @@ document.getElementById('ship-form').addEventListener('submit', async (e) => {
   loadOrders();
 });
 
-window.shipOrder = async (orderId) => {
-  const { data: order } = await supabase.from('orders').select('*, buyer_id').eq('id', orderId).single();
-  if (!order) return;
-  document.getElementById('ship-order-id').value = orderId;
-  document.getElementById('ship-seller').value = 'Handmade & Co. staff';
-  document.getElementById('ship-tracking').value = order.tracking_number || '';
-  document.getElementById('ship-form').dataset.orderId = orderId;
-  document.getElementById('ship-modal').style.display = 'flex';
-  openModal(document.getElementById('ship-modal'));
-};
 
-document.getElementById('ship-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const orderId = document.getElementById('ship-form').dataset.orderId;
-  const { data: order } = await supabase.from('orders').select('status').eq('id', orderId).single();
-  if (order.status !== 'paid' && order.status !== 'processing') {
-    alert('This order is not ready to ship.');
-    return;
-  }
-  const { error } = await supabase.from('orders').update({ tracking_number: document.getElementById('ship-tracking').value.trim(), status: 'shipped' }).eq('id', orderId);
-  if (error) return alert('Failed: ' + error.message);
-  showToast('Order marked as shipped.');
-  modal.style.display = 'none';
-  loadOrders();
-});
-
-const modal = document.getElementById('ship-modal');
-document.getElementById('ship-modal-close').addEventListener('click', () => { modal.style.display = 'none'; });
-modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
-document.getElementById('ship-cancel').addEventListener('click', () => { modal.style.display = 'none'; });
-window.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.style.display = 'none'; });
-
-loadDbStatus();
