@@ -33,6 +33,25 @@ create table if not exists public.categories (
   created_at timestamptz default now() not null
 );
 
+-- Auto-create a profile row when Supabase Auth creates the user
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, display_name, email)
+  values (
+    new.id,
+    coalesce((new.raw_user_meta_data ->> 'display_name'), split_part(new.email, '@', 1)),
+    new.email
+  );
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
+
+
 -- 3. Seller shops
 create table if not exists public.shops (
   id uuid default gen_random_uuid() primary key,
@@ -467,6 +486,22 @@ create policy "Buyers can review verified purchases" on public.reviews
   );
 create policy "Review owners update own review" on public.reviews
   for update using (auth.uid() = buyer_id);
+
+-- Allow the app / browser to add support rows (notifications, sales events,
+-- product images) when the JWT is present. Security stays in the API routes
+-- and in RLS checks on the parent tables.
+create policy "App can add notifications" on public.notifications
+  for insert with check (auth.uid() is not null);
+
+create policy "App can add sales events" on public.sales_events
+  for insert with check (auth.uid() is not null);
+
+create policy "App can add product images" on public.product_images
+  for insert with check (auth.uid() is not null);
+
+create policy "App can add payment rows" on public.payments
+  for insert with check (auth.uid() is not null);
+
 create policy "Sellers respond to reviews of their products" on public.reviews
   for update using (
     exists (
