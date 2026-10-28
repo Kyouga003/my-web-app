@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'shop' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <a href="shop.html" class="btn-ghost" style="margin-bottom:1rem">&larr; Back to shop</a>
+  <div id="product-loading" class="loading-state" style="text-align:center"><div class="skeleton-lg"></div></div>
+  <div id="product-content" style="display:none">
+    <div class="grid grid-cols-2">
+      <div>
+        <div id="product-gallery-main" class="product-card-media" style="aspect-ratio:1"></div>
+        <div id="product-gallery-thumbs" class="flex" style="margin-top:0.75rem"></div>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div id="product-meta" class="flex" style="gap:0.5rem; margin-bottom:0.75rem"></div>
+        <h1 id="product-name"></h1>
+        <div class="product-seller" style="margin-bottom:0.75rem">by <span id="product-seller-name"></span></div>
+        <div id="product-price" class="product-price" style="font-size:1.5rem"></div>
+        <p id="product-description" style="white-space:pre-wrap"></p>
+        <div id="product-attrs" style="margin:1.25rem 0"></div>
+        <div id="product-actions" style="display:flex;gap:0.75rem;align-items:center"></div>
+      </div>
+    </div>
+    <div id="product-stock" style="margin:1rem 0"></div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:2rem 0">
+    <div>
+      <h3>Reviews</h3>
+      <div id="product-reviews"></div>
+    </div>
+    <div style="margin-top:2rem">
+      <h3>You may also like</h3>
+      <div id="product-related" class="grid grid-cols-4"></div>
+    </div>
+  </div>
+  <div id="product-not-found" class="empty-state" style="display:none"><h2>Product not found</h2><p>This listing is no longer available.</p></div>
+</div>
+<script type="module" src="/js/pages/product.js"></script>
+</body>
+</html>

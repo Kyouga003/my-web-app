@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'shop' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <div class="flex-between" style="margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem">
+    <h2>Discover handmade goods</h2>
+    <div class="nav-actions">
+      <a href="seller-dashboard.html" class="btn btn-outline btn-sm">Start selling &rarr;</a>
+    </div>
+  </div>
+  <form id="search-form" class="flex" style="margin-bottom: 1.5rem">
+    <input type="search" id="search-q" name="q" class="form-input flex-1" placeholder="Search products, makers, materials…">
+    <button type="submit" class="btn btn-primary">Search</button>
+    <a href="shop.html" class="btn-ghost" style="margin-left:0.5rem">Clear</a>
+  </form>
+  <aside id="filters-panel" style="display:none; background:var(--warm-beige); padding:1rem; border-radius:var(--radius); border:1px solid var(--border); margin-bottom:1.5rem">
+    <h3 style="margin-top:0">Filters</h3>
+    <div id="filters-content"></div>
+    <button id="apply-filters" class="btn btn-primary btn-block" style="margin-top:0.75rem">Apply filters</button>
+    <button id="reset-filters" class="btn btn-ghost btn-block" style="margin-top:0.5rem">Reset</button>
+  </aside>
+  <button id="toggle-filters" class="btn btn-outline btn-sm">Filters</button>
+  <div id="active-filters" style="margin-bottom:1rem; display:none;"></div>
+  <div id="shop-grid" class="grid grid-cols-4"></div>
+  <div id="shop-pagination" class="flex-between" style="margin-top:1.5rem"></div>
+</div>
+<script type="module" src="/js/pages/shop.js"></script>
+</body>
+</html>

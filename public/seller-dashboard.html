@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seller dashboard — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'seller' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <div class="flex-between" style="margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem">
+    <h2>Seller dashboard</h2>
+    <a href="seller-products.html" class="btn btn-primary">Add a product</a>
+  </div>
+  <div id="seller-require-auth" style="display:none; text-align:center; padding: 2rem">
+    <p><a href="login.html?next=seller-dashboard.html">Sign in</a> to access your seller dashboard.</p>
+  </div>
+  <div id="seller-onboard" style="display:none; background:var(--warm-cream); border:1px solid var(--border); border-radius:var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem">
+    <h3 style="margin-top:0">Open your shop</h3>
+    <p>Sell your handmade goods on Handmade &amp; Co. Create your shop to start listing products.</p>
+    <form id="onboard-form">
+      <div class="form-group"><label>Shop name</label><input type="text" id="shop-name" class="form-input" required></div>
+      <div class="form-group"><label>Shop URL (slug)</label><input type="text" id="shop-slug" class="form-input" required placeholder="my-ceramics-shop"><p class="form-hint">Your shop will be at /seller-shop.html?slug=...</p></div>
+      <div class="form-group"><label>Shop description</label><textarea id="shop-desc" class="form-input" rows="2"></textarea></div>
+      <button type="submit" class="btn btn-primary">Create shop</button>
+    </form>
+  </div>
+  <div id="seller-stats" class="stat-grid" style="margin-bottom:1.5rem"></div>
+  <div class="flex-between" style="margin-bottom:1rem"><h3>Recent orders</h3><a href="seller-orders.html" class="btn-ghost">View all &rarr;</a></div>
+  <div id="seller-recent-orders" style="display:none"></div>
+  <div style="margin-top:1.5rem"><h3>Your products</h3><a href="seller-products.html" class="btn btn-outline">Manage products &rarr;</a></div>
+</div>
+<script type="module" src="/js/pages/seller-dashboard.js"></script>
+</body>
+</html>

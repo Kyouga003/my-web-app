@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order management — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'seller' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <h2>Order management</h2>
+  <div id="seller-orders-require-auth" style="display:none; text-align:center; padding: 2rem">
+    <p><a href="login.html?next=seller-orders.html">Sign in</a> to manage orders.</p>
+  </div>
+  <div id="seller-orders-wrap" style="display:none">
+    <div id="orders-loading" class="loading-state" style="text-align:center"><div class="skeleton-lg"></div></div>
+    <div id="orders-table-wrap" class="table-wrap"></div>
+  </div>
+</div>
+<div class="backdrop" id="ship-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header"><h3>Mark as shipped</h3><button class="modal-close" id="ship-modal-close">&times;</button></div>
+    <div class="modal-body">
+      <form id="ship-form">
+        <div class="form-group"><label>Tracking number (optional)</label><input type="text" id="ship-tracking" class="form-input" placeholder="e.g. CRAFT123456789"></div>
+        <div class="form-group"><label>Note (e.g. delivery estimate)</label><input type="text" id="ship-note" class="form-input" placeholder="What's in the box, delivery time…"></div>
+        <div class="form-group"><label>From</label><input type="text" id="ship-seller" class="form-input" readonly></div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="ship-cancel">Cancel</button>
+      <button class="btn btn-primary" id="ship-confirm">Confirm shipped</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="/js/pages/seller-orders.js"></script>
+</body>
+</html>

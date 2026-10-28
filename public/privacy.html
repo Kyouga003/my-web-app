@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy policy — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'privacy' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <h2>Privacy policy</h2>
+  <div class="legal-box">
+    <p class="legal-note"><strong>Note:</strong> This page contains <strong>draft privacy terms</strong> for development purposes and has not been reviewed by a lawyer.</p>
+    <h3>Information we collect</h3>
+    <p>We collect account details (email, display name), profile information you choose to share (bio, avatar), order and payment information needed to complete transactions, and support messages.</p>
+    <h3>How we use your information</h3>
+    <p>To operate the marketplace, process orders, communicate with you, and improve our services.</p>
+    <h3>Third parties</h3>
+    <p>Payments and infrastructure are handled by configured providers. Your data is never sold to advertisers.</p>
+    <h3>Your rights</h3>
+    <p>You can request account deletion or download your data through your profile settings or by contacting support.</p>
+    <h3>Cookies</h3>
+    <p>The marketplace uses authentication cookies so you stay signed in between visits.</p>
+  </div>
+</div>
+</body>
+</html>

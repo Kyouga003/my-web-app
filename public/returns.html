@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Returns &amp; refunds — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'returns' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <h2>Returns and refunds</h2>
+  <div class="legal-box">
+    <h3>Our return policy</h3>
+    <p>Each seller sets their own return policy on their shop page. Buyers can request returns or refunds through their order details when the policy permits.</p>
+    <h3>When refunds are handled</h3>
+    <ul>
+      <li>If a seller cannot fulfil an order.</li>
+      <li>If an order is cancelled before postage is applied.</li>
+      <li>If the marketplace resolves a dispute over a listing.</li>
+    </ul>
+    <h3>Restocking policy</h3>
+    <p>Return shipping and restocking fees, if any, are set by individual sellers and shown at request time.</p>
+    <h3>Cancelled vs refunded</h3>
+    <p>A cancelled order restores the payment to you (according to the seller's policy) and stock is restored for available items. A refunded order has the payment reversed by the provider.</p>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of service — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'terms' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <h2>Terms of service</h2>
+  <div class="legal-box">
+    <p class="legal-note"><strong>Note:</strong> This page contains <strong>draft terms</strong> for development purposes. They have not been reviewed by a lawyer and should not be treated as final or legally compliant.</p>
+    <h3>1. Sign in</h3>
+    <p>You must be 13 or older (or the age of digital consent in your country) to use this marketplace.</p>
+    <h3>2. Seller requirements</h3>
+    <p>Sellers must represent their products truthfully and fulfil orders as described. Repeated policy violations may result in account termination.</p>
+    <h3>3. Payments</h3>
+    <p>Checkout uses a sandbox payment flow during development. Live processing is not yet enabled.</p>
+    <h3>4. Intellectual property</h3>
+    <p>Users are responsible for the content they post. Sellers retain ownership of their creative work unless otherwise agreed.</p>
+    <h3>5. Limitation of liability</h3>
+    <p>This service is provided "as is". The marketplace is not liable for indirect damages arising from purchases.</p>
+    <h3>6. Changes to these terms</h3>
+    <p>We may update these terms from time to time. Changes will be reflected on this page.</p>
+  </div>
+</div>
+</body>
+</html>

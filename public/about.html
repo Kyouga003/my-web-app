@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'about' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <h2>About Handmade &amp; Co.</h2>
+  <p>Handmade &amp; Co. is a marketplace built for independent artists and makers. We believe the best things are made by hand — by people who care about their craft and the people who buy it.</p>
+  <p>Our marketplace exists to help makers reach buyers directly: no middlemen, no drop-shipping, no guesswork. Every product you see here is made by a real person who chose this shop to share their work with the world.</p>
+  <p>Whether you are here to find a one-of-a-kind gift or to start your own creative business, we are glad you are here.</p>
+  <div class="grid grid-cols-2" style="gap:2rem">
+    <div style="background:var(--warm-beige);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+      <h3>Our promise</h3>
+      <p>We review new listings, protect buyers, and keep the platform safe so you can shop with confidence.</p>
+    </div>
+    <div style="background:var(--warm-beige);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+      <h3>Our standards</h3>
+      <p>We expect every maker to sell honestly, respond to questions, and treat customers with respect.</p>
+    </div>
+  </div>
+  <p class="form-hint" style="margin-top:1.5rem">This is a placeholder about page. Maker stories are stories we add as sellers join the marketplace.</p>
+</div>
+</body>
+</html>

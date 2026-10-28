@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seller guidelines — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'seller' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <h2>Seller guidelines</h2>
+  <div class="legal-box">
+    <p>These guidelines apply to every seller on Handmade &amp; Co. They are the foundation of a fair marketplace.</p>
+    <h3>Listing rules</h3>
+    <ul>
+      <li>Describe materials, dimensions, processing time, and any personalization clearly.</li>
+      <li>Picture your products well — no misleading or deceptive images.</li>
+      <li>Set a reasonable price for the quality and uniqueness of your work.</li>
+    </ul>
+    <h3>Order fulfilment</h3>
+    <ul>
+      <li>Mark orders as shipped only when they have left your hands.</li>
+      <li>Keep your stock accurate — overselling can be unsettling for buyers.</li>
+      <li>Respond to buyer questions promptly.</li>
+    </ul>
+    <h3>Community standards</h3>
+    <ul>
+      <li>No counterfeit, unsafe, or misrepresented items.</li>
+      <li>No contact with buyers outside the marketplace.</li>
+      <li>Respect each other and our shared community space.</li>
+    </ul>
+    <p>Full policy details, including the terms and privacy policy, apply to your account.</p>
+  </div>
+</div>
+</body>
+</html>

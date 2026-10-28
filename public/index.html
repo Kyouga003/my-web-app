@@ -3,83 +3,123 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Full Stack Web App</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 20px;
-      background-color: #f4f7f6;
-    }
-    h1 { color: #333; }
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    input[type="text"] {
-      width: 75%;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button {
-      padding: 10px 15px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button:hover { background-color: #0056b3; }
-    ul { list-style-type: none; padding: 0; margin-top: 20px; }
-    li { background: #e9ecef; margin: 5px 0; padding: 10px; border-radius: 4px; }
-  </style>
+  <title>Handmade &amp; Co. — Handmade goods from independent makers</title>
+  <meta name="description" content="Discover unique handmade goods, arts and crafts from independent artisans. Buy direct from makers, or open your own shop.">
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <div class="card">
-    <h1>Welcome to My Application</h1>
-    <p>This page connects HTML/CSS, Node.js, and Supabase PostgreSQL.</p>
-    
-    <div>
-      <input type="text" id="messageInput" placeholder="Write a message...">
-      <button onclick="addMessage()">Submit</button>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'home' });
+</script>
+<div id="setup-banner"></div>
+<main>
+  <section class="section warm-bg">
+    <div class="container">
+      <div class="hero">
+        <div>
+          <h1>Made by Hand.<br>Chosen with Heart.</h1>
+          <p class="lead">A marketplace for independent artists and makers. Ceramics, textiles, jewelry, prints, candles and more — each piece made with care, sold directly by the person who made it.</p>
+          <div class="hero-actions">
+            <a href="shop.html" class="btn btn-primary btn-lg">Explore Handmade Goods</a>
+            <a href="seller-dashboard.html" class="btn btn-outline btn-lg">Start Selling</a>
+          </div>
+        </div>
+        <div class="hero-image" aria-hidden="true">
+          <svg viewBox="0 0 640 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Handmade craft goods">
+            <rect width="640" height="520" fill="#44266E"/>
+            <circle cx="300" cy="260" r="130" fill="#FFF9F2" opacity="0.9"/>
+            <rect x="230" y="330" width="140" height="60" rx="8" fill="#6D4AFF" opacity="0.9"/>
+            <circle cx="200" cy="180" r="34" fill="#E9DFFF" opacity="0.8"/>
+            <circle cx="380" cy="300" r="26" fill="#F2E8DC" opacity="0.9"/>
+            <circle cx="440" cy="220" r="20" fill="#E9DFFF" opacity="0.8"/>
+            <circle cx="260" cy="380" r="22" fill="#FFF9F2" opacity="0.9"/>
+            <ellipse cx="300" cy="260" rx="40" ry="12" fill="#59345F" opacity="0.35"/>
+          </svg>
+        </div>
+      </div>
     </div>
+  <section class="section" id="featured-section">
+    <div class="container">
+      <div class="flex-between" style="margin-bottom: 1.5rem">
+        <h2>New &amp; featured</h2>
+        <a href="shop.html" class="btn-ghost">Browse all &rarr;</a>
+      </div>
+      <div id="featured-grid" class="grid grid-cols-4"></div>
+    </div>
+  </section>
 
-    <h3>Stored Messages:</h3>
-    <ul id="messageList"></ul>
+  <section class="section section-bg" id="categories-section">
+    <div class="container">
+      <h2 class="text-center" style="margin-bottom: 2rem">Shop by category</h2>
+      <div id="category-grid" class="grid grid-cols-4"></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="grid grid-cols-3 warm-bg" style="border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden;">
+        <div style="padding: 2rem">
+          <h3>1. Find something handmade</h3>
+          <p>Browse unique products made by independent artists. Every listing shows the maker, materials, and processing time.</p>
+        </div>
+        <div style="padding: 2rem">
+          <h3>2. Buy direct from the maker</h3>
+          <p>Add to cart, check out securely, and your order goes straight to the seller who made it.</p>
+        </div>
+        <div style="padding: 2rem">
+          <h3>3. Sell your own work</h3>
+          <p>Open a shop, list your products, and manage orders from your own seller dashboard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="grid grid-cols-4">
+      <div class="footer-col">
+        <h4>Handmade &amp; Co.</h4>
+        <ul>
+          <li><a href="about.html">About us</a></li>
+          <li><a href="contact.html">Contact</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Buy</h4>
+        <ul>
+          <li><a href="shop.html">Shop all</a></li>
+          <li><a href="cart.html">Cart</a></li>
+          <li><a href="orders.html">My orders</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Sell</h4>
+        <ul>
+          <li><a href="seller-dashboard.html">Seller dashboard</a></li>
+          <li><a href="seller-guidelines.html">Seller guidelines</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="privacy.html">Privacy policy</a></li>
+          <li><a href="terms.html">Terms of service</a></li>
+          <li><a href="shipping.html">Shipping</a></li>
+          <li><a href="returns.html">Returns &amp; refunds</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="text-center" style="margin-top: 2rem; font-size: 0.85rem; color: var(--text-light);">&copy; Handmade &amp; Co. Marketplace. The homepage illustration is development content, not a product listing.</p>
   </div>
-
-  <script>
-    async function loadMessages() {
-      const res = await fetch('/api/messages');
-      const data = await res.json();
-      const list = document.getElementById('messageList');
-      list.innerHTML = '';
-      data.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = item.content;
-        list.appendChild(li);
-      });
-    }
-
-    async function addMessage() {
-      const input = document.getElementById('messageInput');
-      if (!input.value) return;
-
-      await fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: input.value })
-      });
-
-      input.value = '';
-      loadMessages();
-    }
-
-    loadMessages();
-  </script>
+</footer>
+<script type="module" src="/js/pages/home.js"></script>
 </body>
 </html>
+  </section>

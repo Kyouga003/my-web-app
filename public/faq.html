@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAQ — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'faq' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <h2>Frequently asked questions</h2>
+  <div class="faq-list" style="max-width:820px">
+    <div class="faq">
+      <h3>How do I buy something?</h3>
+      <p>Find a product you like, add it to your cart, and check out securely. You will receive an email confirmation with the order details.</p>
+    </div>
+    <div class="faq">
+      <h3>How long does processing take?</h3>
+      <p>Processing times vary by maker and are shown on each product listing. Most orders are shipped within a few business days of payment confirmation.</p>
+    </div>
+    <div class="faq">
+      <h3>What if I need to cancel my order?</h3>
+      <p>You can cancel most orders while they are still pending payment or paid. Contact the seller through your order details, and we will process any refunds.</p>
+    </div>
+    <div class="faq">
+      <h3>How do I leave a review?</h3>
+      <p>Once an order is completed, you will find a review link in your order details. Reviews are only allowed for purchases you actually made.</p>
+    </div>
+    <div class="faq">
+      <h3>How do I sell my own work?</h3>
+      <p>Create a free seller account, open a shop, and start listing products. Sellers manage inventory, fulfilment, and communication from their dashboard.</p>
+    </div>
+    <div class="faq">
+      <h3>What payment methods do you accept?</h3>
+      <p>Checkout is a sandbox flow for testing. Live payment providers can be configured by the marketplace administrator — see our support page.</p>
+    </div>
+    <div class="faq">
+      <h3>How do I contact a seller?</h3>
+      <p>Each product has a "Contact the maker" link on its detail page. Sellers are notified of your questions and can reply there.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

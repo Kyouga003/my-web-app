@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administration — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'admin' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <div id="admin-require-auth" style="display:none; text-align:center; padding: 2rem">
+    <p><a href="login.html?next=admin.html">Sign in</a> to access the administration area.</p>
+  </div>
+  <div id="admin-wrap" style="display:none">
+    <h2>Administration</h2>
+    <div class="stat-grid" style="margin-bottom:1.5rem">
+      <div class="metric-card"><div class="label">Products</div><div class="value" id="admin-products">-</div></div>
+      <div class="metric-card"><div class="label">Orders</div><div class="value" id="admin-orders">-</div></div>
+      <div class="metric-card"><div class="label">Categories</div><div class="value" id="admin-categories">-</div></div>
+      <div class="metric-card"><div class="label">Reports</div><div class="value" id="admin-reports">-</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem">
+        <h3 style="margin-top:0">Reported content</h3>
+        <div id="reports-list"></div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem">
+        <h3 style="margin-top:0">Recent activity</h3>
+        <div id="activity-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="/js/pages/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shipping — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'shipping' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <h2>Shipping information</h2>
+  <div class="legal-box">
+    <h3>Shipping by marketplace policy</h3>
+    <p>Shipping is managed by each seller. Processing times and shipping methods are displayed on each product listing.</p>
+    <h3>What buyers should know</h3>
+    <ul>
+      <li>Processing times begin when your order is confirmed.</li>
+      <li>Shipping methods vary by seller and location.</li>
+      <li>International orders take longer to process.</li>
+    </ul>
+    <h3>Contact us</h3>
+    <p>For shipping questions, please contact the seller through your order details or use the support form.</p>
+  </div>
+</div>
+</body>
+</html>

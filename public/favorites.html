@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Favorites — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'favorites' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <h2>Your favorites</h2>
+  <div id="fav-require-login" style="display:none; text-align:center; padding: 2rem">
+    <p><a href="login.html?next=favorites.html">Sign in</a> to see your saved products.</p>
+  </div>
+  <div id="fav-loading" class="loading-state" style="text-align:center"><div class="skeleton-lg"></div></div>
+  <div id="fav-empty" class="empty-state" style="display:none"><h2>No favorites yet</h2><p><a href="shop.html" class="btn btn-primary">Browse handmade goods</a></p></div>
+  <div id="fav-grid" class="grid grid-cols-4" style="display:none"></div>
+</div>
+<script type="module" src="/js/pages/favorites.js"></script>
+</body>
+</html>

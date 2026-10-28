@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop — Handmade &amp; Co.</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/config.js"></script>
+<script type="module" src="/js/init.js"></script>
+<script type="module">
+  import { initSupabase } from '/js/init.js';
+  initSupabase();
+  import { renderHeader } from '/js/nav.js';
+  renderHeader({ currentPage: 'shop' });
+</script>
+<div id="setup-banner"></div>
+<div class="container section">
+  <div id="shop-loading" class="loading-state" style="text-align:center"><div class="skeleton-lg"></div></div>
+  <div id="shop-content" style="display:none">
+    <div id="shop-banner"></div>
+    <h1><span id="shop-name"></span></h1>
+    <p id="shop-seller" class="product-seller"></p>
+    <div id="shop-banner-img" style="margin:1rem 0"></div>
+    <p id="shop-desc" style="font-size:1.05rem"></p>
+    <div id="shop-policies" style="background:var(--warm-beige);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-top:1.5rem">
+      <h3 style="margin-top:0">Shop policies</h3>
+      <p id="shop-processing" style="margin-bottom:0.5rem"><strong>Processing:</strong> <span id="shop-processing-text">—</span></p>
+      <p id="shop-shipping" style="margin-bottom:0.5rem"><strong>Shipping:</strong> <span id="shop-shipping-text">—</span></p>
+      <p id="shop-return" style="margin-bottom:0.5rem"><strong>Returns:</strong> <span id="shop-return-text">—</span></p>
+      <p id="shop-contact" style="margin-bottom:1rem"><strong>Contact:</strong> <a id="shop-contact-link" href="mailto:">Contact the maker</a></p>
+      <p id="shop-permalink" style="font-size:0.85rem;color:var(--text-light)">Share: <a id="share-link" href="#" onclick="navigator.clipboard.writeText(window.location.href);showToast('Link copied!');">copy link</a></p>
+    </div>
+    <div id="shop-products" class="grid grid-cols-4"></div>
+  </div>
+  <div id="shop-not-found" class="empty-state" style="display:none"><h2>Shop not found</h2><p>This shop has gone silent.</p></div>
+</div>
+<script type="module" src="/js/pages/seller-shop.js"></script>
+</body>
+</html>
