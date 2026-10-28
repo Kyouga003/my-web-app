@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Full Stack Web App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: #f4f7f6;
+    }
+    h1 { color: #333; }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    input[type="text"] {
+      width: 75%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #0056b3; }
+    ul { list-style-type: none; padding: 0; margin-top: 20px; }
+    li { background: #e9ecef; margin: 5px 0; padding: 10px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Welcome to My Application</h1>
+    <p>This page connects HTML/CSS, Node.js, and Supabase PostgreSQL.</p>
+    
+    <div>
+      <input type="text" id="messageInput" placeholder="Write a message...">
+      <button onclick="addMessage()">Submit</button>
+    </div>
+
+    <h3>Stored Messages:</h3>
+    <ul id="messageList"></ul>
+  </div>
+
+  <script>
+    async function loadMessages() {
+      const res = await fetch('/api/messages');
+      const data = await res.json();
+      const list = document.getElementById('messageList');
+      list.innerHTML = '';
+      data.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item.content;
+        list.appendChild(li);
+      });
+    }
+
+    async function addMessage() {
+      const input = document.getElementById('messageInput');
+      if (!input.value) return;
+
+      await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: input.value })
+      });
+
+      input.value = '';
+      loadMessages();
+    }
+
+    loadMessages();
+  </script>
+</body>
+</html>
