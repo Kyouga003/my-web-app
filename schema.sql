@@ -71,6 +71,48 @@ create table if not exists public.shops (
   updated_at timestamptz default now() not null
 );
 
+-- Prevent self-service promotion to administrator while allowing shop owners
+-- to become sellers during onboarding.
+create or replace function public.guard_profile_role_changes()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.role is not distinct from old.role then
+    return new;
+  end if;
+
+  if auth.uid() = old.id
+    and old.role = 'buyer'
+    and new.role = 'seller'
+    and exists (select 1 from public.shops where owner_id = old.id) then
+    return new;
+  end if;
+
+  if auth.uid() is not null
+    and exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') then
+    return new;
+  end if;
+
+  if auth.jwt() ->> 'role' = 'service_role' then
+    return new;
+  end if;
+
+  if auth.uid() is null then
+    return new;
+  end if;
+
+  raise exception 'Profile role cannot be changed by this user';
+end;
+$$;
+
+drop trigger if exists guard_profile_role_changes on public.profiles;
+create trigger guard_profile_role_changes
+before update of role on public.profiles
+for each row execute function public.guard_profile_role_changes();
+
 -- 4. Products
 create table if not exists public.products (
   id uuid default gen_random_uuid() primary key,
