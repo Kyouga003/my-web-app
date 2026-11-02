@@ -259,6 +259,7 @@ create index if not exists idx_orders_status on public.orders(status);
 create index if not exists idx_orders_created on public.orders(created_at desc);
 create index if not exists idx_payments_order on public.payments(order_id);
 create index if not exists idx_reviews_product on public.reviews(product_id);
+create unique index if not exists idx_reviews_one_per_buyer_product on public.reviews(product_id, buyer_id);
 create index if not exists idx_favorites_user on public.favorites(user_id);
 create index if not exists idx_notifications_user on public.notifications(user_id, read);
 create index if not exists idx_sales_events_created on public.sales_events(created_at desc);

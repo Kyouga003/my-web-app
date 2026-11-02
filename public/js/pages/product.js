@@ -1,6 +1,6 @@
 // Product detail page
 import { supabase } from '/js/init.js';
-import { formatMoney, formatDateTime, escapeHtml, renderStars } from '/js/ui.js';
+import { formatMoney, formatDateTime, escapeHtml, renderStars, showToast } from '/js/ui.js';
 import { renderAuthLinks, updateCartCount } from '/js/nav.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -115,6 +115,9 @@ async function loadProduct() {
 
   document.getElementById('product-add-cart')?.addEventListener('click', async () => {
     const qty = parseInt(document.getElementById('product-qty').value) || 1;
+    if (qty > stock) {
+      return showToast('Not enough stock available.', 'error');
+    }
     const { currentUser: u } = await import('/js/init.js');
     if (!u) { window.location.href = 'login.html'; return; }
     let { data: cart } = await supabase.from('carts').select('id').eq('user_id', u.id).maybeSingle();
@@ -146,6 +149,134 @@ async function loadProduct() {
       btn.classList.add('active');
     }
   });
+
+  // Initial favorite state
+  (async () => {
+    try {
+      const { currentUser: u2 } = await import('/js/init.js');
+      if (u2) {
+        const { data: fav } = await supabase.from('favorites').select('id').eq('product_id', p.id).eq('user_id', u2.id).maybeSingle();
+        if (fav) btn.classList.add('active');
+      }
+    } catch (_) {}
+  })();
+
+  // Review eligibility: a buyer may review a product from a completed order.
+  // The server enforces this via Row Level Security on the reviews table.
+  (async () => {
+    try {
+      const { currentUser: u3 } = await import('/js/init.js');
+      if (!u3) return;
+      const { data: mine } = await supabase.from('reviews').select('id, rating, comment, created_at').eq('product_id', p.id).eq('buyer_id', u3.id).order('created_at', { ascending: false }).limit(1);
+      const reviewsEl = document.getElementById('product-reviews');
+      if (mine && mine.length) {
+        reviewsEl.insertAdjacentHTML('beforeend', '<p class="form-hint" style="margin-top:1rem">You reviewed this product on ' + formatDateTime(mine[0].created_at) + '.</p>');
+        return;
+      }
+      const { data: items } = await supabase.from('order_items').select('id, orders(status, created_at)').eq('product_id', p.id).eq('orders.buyer_id', u3.id).eq('orders.status', 'completed').order('orders.created_at', { ascending: false }).limit(1);
+      const eligible = (items || [])[0];
+      if (!eligible) return;
+      const orderItemId = eligible.id;
+      const formHtml = '<div class="review-form" style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-top:1.5rem">' +
+        '<h4 style="margin-top:0">Write a review</h4>' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem">' +
+        '<span style="font-size:1.3rem;color:var(--text-secondary)">Rating</span>' +
+        '<div id="review-stars" style="color:#d8cee3;cursor:pointer;display:flex;gap:0.25rem;font-size:1.4rem">&#9734;&#9734;&#9734;&#9734;&#9734;</div>' +
+        '<input type="hidden" id="review-rating" value="0">' +
+        '</div>' +
+        '<textarea id="review-comment" class="form-textarea" placeholder="Share your experience with this handmade piece…" style="min-height:96px"></textarea>' +
+        '<button class="btn btn-primary btn-sm" id="review-submit">Submit review</button>' +
+        '<p id="review-message" style="color:var(--danger);font-size:0.85rem;margin-top:0.5rem;display:none"></p>' +
+        '</div>';
+      reviewsEl.insertAdjacentHTML('beforeend', formHtml);
+      let ratingValue = 0;
+      const starsEl = document.getElementById('review-stars');
+      const ratingInput = document.getElementById('review-rating');
+      const updateStars = () => {
+        starsEl.innerHTML = '';
+        for (let i = 1; i <= 5; i++) {
+          const s = document.createElement('span');
+          s.textContent = '&#9733;';
+          s.style.color = i <= ratingValue ? 'var(--brand-purple)' : 'var(--text-secondary)';
+          s.style.cursor = 'pointer';
+          s.dataset.value = i;
+          starsEl.appendChild(s);
+        }
+      };
+      starsEl.addEventListener('click', (e) => {
+        const v = parseInt(e.target.dataset.value, 10);
+        if (v) { ratingValue = v; ratingInput.value = v; updateStars(); }
+      });
+      updateStars();
+      document.getElementById('review-submit').addEventListener('click', async () => {
+        const comment = document.getElementById('review-comment').value.trim();
+        if (!ratingValue) return document.getElementById('review-message').textContent = 'Please select a rating.';
+        if (!comment) return document.getElementById('review-message').textContent = 'Please write a few words.';
+        document.getElementById('review-message').style.display = 'none';
+        const { error } = await supabase.from('reviews').insert([{
+          product_id: p.id, order_item_id: orderItemId, buyer_id: u3.id, rating: ratingValue, comment
+        }]);
+        if (error) return document.getElementById('review-message').textContent = error.message || 'Could not submit review.';
+        showToast('Review submitted.');
+        document.getElementById('review-submit').disabled = true;
+        document.getElementById('review-submit').textContent = 'Submitted';
+      });
+    } catch (_) {}
+  })();
+
+  // Contact the seller (requires sign-in; stored as a seller inquiry).
+  (async () => {
+    try {
+      const { currentUser: u4 } = await import('/js/init.js');
+      if (!u4) return;
+      const actions = document.getElementById('product-actions');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-outline btn-sm';
+      btn.style.marginLeft = '0.5rem';
+      btn.textContent = 'Contact the seller';
+      actions.appendChild(btn);
+      const formHtml = '<div id="inquiry-form-wrap" style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-top:1rem;display:none">' +
+        '<h4 style="margin-top:0">Message the maker</h4>' +
+        '<div class="form-group"><label>Subject</label><input type="text" id="inquiry-subject" class="form-input" placeholder="Question about materials or personalisation"></div>' +
+        '<div class="form-group"><label>Message</label><textarea id="inquiry-message" class="form-textarea" placeholder="What would you like to ask?" style="min-height:96px"></textarea></div>' +
+        '<button class="btn btn-primary btn-sm" id="inquiry-submit">Send message</button>' +
+        '<button class="btn btn-ghost btn-sm" id="inquiry-cancel">Cancel</button>' +
+        '<p id="inquiry-message-msg" style="color:var(--danger);font-size:0.85rem;margin-top:0.5rem;display:none"></p>' +
+        '</div>';
+      actions.insertAdjacentHTML('afterend', formHtml);
+      const wrap = document.getElementById('inquiry-form-wrap');
+      btn.addEventListener('click', () => { wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none'; });
+      document.getElementById('inquiry-cancel').addEventListener('click', () => { wrap.style.display = 'none'; });
+      document.getElementById('inquiry-submit').addEventListener('click', async () => {
+        const subject = document.getElementById('inquiry-subject').value.trim();
+        const message = document.getElementById('inquiry-message').value.trim();
+        if (!subject || !message) return document.getElementById('inquiry-message-msg').textContent = 'Please fill in both fields.';
+        document.getElementById('inquiry-message-msg').style.display = 'none';
+        const { error } = await fetchJson('/api/seller-inquiries', {
+          shop_id: p.shops.id, product_id: p.id, subject, message
+        });
+        if (error) return document.getElementById('inquiry-message-msg').textContent = error;
+        showToast('Message sent to the seller.');
+        wrap.style.display = 'none';
+        document.getElementById('inquiry-subject').value = '';
+        document.getElementById('inquiry-message').value = '';
+      });
+    } catch (_) {}
+  })();
+
+  async function fetchJson(path, body) {
+    const { currentUser: cu } = await import('/js/init.js');
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: session ? 'Bearer ' + session.access_token : '' },
+      body: JSON.stringify(body)
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: json.error || json.message || 'Request failed (' + res.status + ')' };
+    return { data: json };
+  }
 
   loadingEl.style.display = 'none';
   contentEl.style.display = 'block';

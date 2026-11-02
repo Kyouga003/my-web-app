@@ -1,4 +1,5 @@
-// Contact/support form (server-side messages API preserved + structured)
+// Contact/support form — persists to the messages table via /api/messages.
+import { supabase } from '/js/init.js';
 import { showToast, showError, clearErrors } from '/js/ui.js';
 
 const form = document.getElementById('contact-form');
@@ -17,14 +18,11 @@ form.addEventListener('submit', async (e) => {
   }
   const submit = form.querySelector('button[type="submit"]');
   submit.disabled = true;
-  submit.textContent = 'Sendingâ€¦';
-  const { data, error } = await supabase.messages?.insert ? null : null;
-  // Existing messages table is for demo messages; our support channel goes to
-  // the support inbox via /api/contact which persists to the messages table.
+  submit.textContent = 'Sending…';
   const res = await fetch('/api/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: JSON.stringify(payload) })
+    body: JSON.stringify(payload)
   });
   submit.disabled = false;
   submit.textContent = 'Send message';
@@ -33,11 +31,6 @@ form.addEventListener('submit', async (e) => {
   form.reset();
 });
 
-// Use the Supabase client from init.js for a nicer fallback path above
-
-import { supabase } from '/js/init.js';
-
-// Support inbox is served through the existing messages API:
-// each inquiry is stored as a message whose content is a JSON blob with the
-// fields (name, email, subject, message). This keeps the same trusted
-// pipeline without exposing sender addresses.
+// Support inquiries are stored as messages whose content is a JSON blob with
+// the fields (name, email, subject, message). Admins can read them via
+// /api/messages (authenticated, admin-only).
