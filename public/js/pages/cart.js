@@ -1,6 +1,6 @@
 // Shopping cart (bound to the signed-in user's account)
 import { supabase } from '/js/init.js';
-import { formatMoney, escapeHtml } from '/js/ui.js';
+import { formatMoney, escapeHtml, showToast } from '/js/ui.js';
 import { renderAuthLinks, updateCartCount } from '/js/nav.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -47,6 +47,11 @@ async function ensureCart(userId) {
   let { data: cart } = await supabase.from('carts').select('id').eq('user_id', userId).maybeSingle();
   if (!cart) {
     const { data: created } = await supabase.from('carts').insert([{ user_id: userId }]).select().single();
+    return created.id;
+  }
+  return cart.id;
+}
+
 async function loadCart() {
   const { currentUser } = await import('/js/init.js');
   const user = currentUser;
@@ -57,7 +62,7 @@ async function loadCart() {
     .eq('cart_id', cartId);
   const rows = items || [];
   renderCart(rows);
-  if (addOnLoad && rows.findIndex(r => r.product_id === addOnLoad) < 0) {
+  if (addOnLoad && rows.findIndex((r) => r.product_id === addOnLoad) < 0) {
     const { data: prod } = await supabase.from('products').select('quantity,status').eq('id', addOnLoad).single();
     if (prod && prod.status === 'published' && (prod.quantity || 0) > 0) {
       await supabase.from('cart_items').insert([{ cart_id: cartId, product_id: addOnLoad, quantity: 1 }]);
@@ -82,36 +87,36 @@ function renderCart(rows) {
   summary.style.display = 'block';
   let subtotal = 0;
   let html = '<div class="table-wrap"><table><thead><tr><th style="width:44%">Product</th><th style="width:14%">Price</th><th style="width:14%">Qty</th><th style="width:14%">Subtotal</th><th style="width:14%"></th></tr></thead><tbody>';
-  rows.forEach(r => {
+  rows.forEach((r) => {
     const p = r.products;
     const img = (p.product_images || [])[0];
     const price = p.price_cents;
     const line = price * r.quantity;
     subtotal += line;
     const stock = p.quantity == null ? 0 : p.quantity;
-    html += `
-      <tr>
-        <td>
-          <div class="flex" style="align-items:center">
-            <img src="${escapeHtml(img ? img.url : '/images/placeholder.svg')}" alt="" style="width:72px;height:92px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">
-            <div>
-              <div style="font-weight:600">${escapeHtml(p.name)}</div>
-              <div class="text-secondary" style="font-size:0.85rem">by ${escapeHtml(p.shops?.name || 'a maker')}</div>
-              ${stock <= 0 ? '<div class="product-stock out" style="font-size:0.8rem">Sold out</div>' : ''}
-            </div>
-          </div>
-        </td>
-        <td>${formatMoney(price, p.currency)}</td>
-        <td>
-          ${stock <= 0 ? '<span class="product-stock out">â€”</span>' : `
-            <input type="number" value="${r.quantity}" min="1" max="${stock}" data-id="${r.id}" class="cart-qty form-input" style="width:70px">
-            <button class="btn-ghost btn-sm" onclick="updateItem('${r.id}', ${r.quantity - 1})" ${r.quantity <= 1 ? 'disabled' : ''}>&minus;</button>
-            <button class="btn-ghost btn-sm" onclick="updateItem('${r.id}', ${r.quantity + 1})" ${stock <= r.quantity ? 'disabled' : ''}>&plus;</button>
-          `}
-        </td>
-        <td>${formatMoney(line, p.currency)}</td>
-        <td><button class="btn-ghost btn-sm" onclick="removeItem('${r.id}')" style="color:var(--danger)">Remove</button></td>
-      </tr>`;
+    html += '\
+      <tr>\
+        <td>\
+          <div class="flex" style="align-items:center">\
+            <img src="' + escapeHtml(img ? img.url : '/images/placeholder.svg') + '" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">\
+            <div>\
+              <div style="font-weight:600">' + escapeHtml(p.name) + '</div>\
+              <div class="text-secondary" style="font-size:0.85rem">by ' + escapeHtml(p.shops?.name || 'a maker') + '</div>\
+              ' + (stock <= 0 ? '<div class="product-stock out" style="font-size:0.8rem">Sold out</div>' : '') + '\
+            </div>\
+          </div>\
+        </td>\
+        <td>' + formatMoney(price, p.currency) + '</td>\
+        <td>\
+          ' + (stock <= 0 ? '<span class="product-stock out">—</span>' : '\
+            <input type="number" value="' + r.quantity + '" min="1" max="' + stock + '" data-id="' + r.id + '" class="cart-qty form-input" style="width:70px">\
+            <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity - 1) + ')" ' + (r.quantity <= 1 ? 'disabled' : '') + '>&minus;</button>\
+            <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity + 1) + ')" ' + (stock <= r.quantity ? 'disabled' : '') + '>&plus;</button>\
+          ') + '\
+        </td>\
+        <td>' + formatMoney(line, p.currency) + '</td>\
+        <td><button class="btn-ghost btn-sm" onclick="removeItem(' + JSON.stringify(r.id) + ')" style="color:var(--danger)">Remove</button></td>\
+      </tr>';
   });
   html += '</tbody></table></div>';
   itemsWrap.innerHTML = html;
@@ -133,8 +138,3 @@ window.removeItem = async (itemId) => {
 
 loadDbStatus();
 loadCart();
-
-    cart = created;
-  }
-  return cart.id;
-}

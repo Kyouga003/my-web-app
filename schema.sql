@@ -7,7 +7,7 @@
 -- sales_events, seller_inquiries, reports — plus Row Level Security (RLS)
 -- policies, indexes, triggers, a public storage bucket for product images, and
 -- realtime publication for the live sales feed.
-// ============================================================================
+-- ============================================================================
 
 -- Extensions
 create extension if not exists pgcrypto;
@@ -150,7 +150,8 @@ create table if not exists public.order_items (
   product_name_snapshot text not null,
   price_cents integer not null,
   quantity integer not null default 1 check (quantity > 0),
-  created_at timestamptz default now() not null
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
 );
 
 -- 9. Payments
@@ -216,6 +217,17 @@ create table if not exists public.seller_inquiries (
   buyer_id uuid references public.profiles(id) on delete cascade not null,
   subject text not null,
   message text not null,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+-- 13b. Support / contact messages
+create table if not exists public.messages (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  email text not null,
+  subject text not null,
+  content text not null,
   created_at timestamptz default now() not null
 );
 
@@ -226,6 +238,11 @@ create table if not exists public.reports (
   product_id uuid references public.products(id) on delete set null,
   review_id uuid references public.reviews(id) on delete set null,
   reason text not null,
+  status text check (status in ('open', 'reviewed', 'resolved', 'dismissed'))
+    default 'open' not null,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
 -- ============================================================================
 -- Indexes
 -- ============================================================================
@@ -316,14 +333,6 @@ insert into storage.buckets (id, name, public)
 values ('product-images', 'product-images', true)
 on conflict (id) do nothing;
 
-  status text check (status in ('open', 'reviewed', 'resolved', 'dismissed'))
-    default 'open' not null,
-  created_at timestamptz default now() not null
-);
-
-  updated_at timestamptz default now() not null
-);
-
 -- 5. Product images (stored in Supabase Storage bucket 'product-images')
 create table if not exists public.product_images (
   id uuid default gen_random_uuid() primary key,
@@ -355,6 +364,7 @@ alter table public.notifications enable row level security;
 alter table public.sales_events enable row level security;
 alter table public.seller_inquiries enable row level security;
 alter table public.reports enable row level security;
+alter table public.messages enable row level security;
 
 -- Profiles: public read, owners/admins write
 create policy "Profiles are viewable by everyone" on public.profiles
@@ -538,6 +548,12 @@ create policy "Admins manage reports" on public.reports
   using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
   with check (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
 
+-- Messages: anyone can send; admins read all
+create policy "Anyone can send a support message" on public.messages
+  for insert with check (true);
+create policy "Admins read support messages" on public.messages for select
+  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+
 -- Storage: product-images bucket — public read, authenticated upload
 create policy "Product images are publicly readable" on storage.objects
   for select using (bucket_id = 'product-images');
@@ -569,4 +585,4 @@ on conflict (slug) do nothing;
 --    Supabase project (Authentication > Email Templates).
 -- 3. The 'product-images' bucket is public. Uploads are handled from the browser
 --    with the Supabase anon key; RLS keeps uploads safe.
-// ============================================================================
+-- ============================================================================

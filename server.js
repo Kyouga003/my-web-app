@@ -43,7 +43,7 @@ app.get('/api/health', async (_req, res) => {
 const REQUIRED_TABLES = [
   'profiles', 'categories', 'shops', 'products', 'product_images', 'carts',
   'cart_items', 'favorites', 'orders', 'order_items', 'payments', 'reviews',
-  'notifications', 'sales_events', 'seller_inquiries', 'reports'
+  'notifications', 'sales_events', 'seller_inquiries', 'reports', 'messages'
 ];
 
 app.get('/api/db/status', async (_req, res) => {
@@ -87,19 +87,24 @@ function requireRole(allowed) {
 }
 
 // ---------------------------------------------------------------------------
-// Existing messages API (preserved)
+// Support / contact messages
 // ---------------------------------------------------------------------------
-app.get('/api/messages', async (req, res) => {
-  const { data, error } = await supabase.from('messages').select('*');
+app.get('/api/messages', requireUser, requireRole(['admin']), async (_req, res) => {
+  const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  res.json(data || []);
 });
 
 app.post('/api/messages', async (req, res) => {
-  const { content } = req.body;
-  const { data, error } = await supabase.from('messages').insert([{ content }]);
+  const { name, email, subject, content } = req.body || {};
+  if (!name || !email || !subject || !content) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+  const { data, error } = await supabase.from('messages').insert([{
+    name, email, subject, content
+  }]);
   if (error) return res.status(500).json({ error: error.message });
-  res.json({ message: 'Success', data });
+  res.status(201).json({ message: 'Success', data });
 });
 
 // ---------------------------------------------------------------------------
@@ -167,6 +172,39 @@ app.patch('/api/shops/:id', requireUser, async (req, res) => {
   const { data, error } = await supabase.from('shops').update(req.body).eq('id', req.params.id).select();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data[0]);
+});
+
+// ---------------------------------------------------------------------------
+// Seller inquiries (buyer-to-seller contact)
+// ---------------------------------------------------------------------------
+app.post('/api/seller-inquiries', requireUser, async (req, res) => {
+  const { shop_id, product_id, subject, message } = req.body || {};
+  if (!shop_id || !subject || !message) {
+    return res.status(400).json({ error: 'Shop, subject and message are required' });
+  }
+  const { data: shop } = await supabase.from('shops').select('id, owner_id').eq('id', shop_id).single();
+  if (!shop) return res.status(404).json({ error: 'Shop not found' });
+  const { data, error } = await supabase.from('seller_inquiries').insert([{
+    shop_id, product_id: product_id || null, buyer_id: req.user.id, subject, message
+  }]).select();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data[0]);
+});
+
+app.get('/api/seller-inquiries', requireUser, async (req, res) => {
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', req.user.id).single();
+  const isAdmin = profile && profile.role === 'admin';
+  let shopIds = null;
+  if (!isAdmin) {
+    const { data: shops } = await supabase.from('shops').select('id').eq('owner_id', req.user.id);
+    shopIds = (shops || []).map(s => s.id);
+    if (shopIds.length === 0) return res.json([]);
+  }
+  let query = supabase.from('seller_inquiries').select('*, shops(name, slug), profiles(display_name)').order('created_at', { ascending: false });
+  if (!isAdmin) query = query.in('shop_id', shopIds);
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
 });
 
 // ---------------------------------------------------------------------------
