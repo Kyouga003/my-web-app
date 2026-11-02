@@ -10,6 +10,24 @@ function safeNextPage() {
   return /^[a-z0-9-]+\.html$/i.test(requested) ? requested : null;
 }
 
+function authErrorMessage(error, action) {
+  const message = String(error && error.message || '');
+  const normalized = message.toLowerCase();
+  if (normalized.includes('email rate limit exceeded') || normalized.includes('rate limit')) {
+    return 'Supabase is temporarily limiting emails. Wait before retrying, or configure a custom SMTP provider in Supabase Auth.';
+  }
+  if (normalized.includes('invalid login credentials')) {
+    return 'The email/password pair was not accepted, or the email is not confirmed. Check the email, try password reset, and confirm signup completed.';
+  }
+  if (normalized.includes('email not confirmed')) {
+    return 'Confirm your email using the link Supabase sent, then sign in.';
+  }
+  if (normalized.includes('fetch failed') || normalized.includes('failed to fetch')) {
+    return 'Could not reach Supabase. Check the project URL and connection, then try again.';
+  }
+  return message || action + ' failed. Please try again.';
+}
+
 window.addEventListener('authstate', async () => {
   const { currentUser } = await import('/js/init.js');
   const profile = currentUser
@@ -31,11 +49,14 @@ export async function setupLogin(form, defaultRedirect) {
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     submit.textContent = 'Signing in�';
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    submit.disabled = false;
-    submit.textContent = 'Sign in';
-    if (error) {
-      return showError(form, 'login-email', error.message || 'Sign in failed. Please try again.');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return showError(form, 'login-email', authErrorMessage(error, 'Sign in'));
+    } catch (error) {
+      return showError(form, 'login-email', authErrorMessage(error, 'Sign in'));
+    } finally {
+      submit.disabled = false;
+      submit.textContent = 'Sign in';
     }
     const next = safeNextPage() || defaultRedirect || 'index.html';
     showToast('Welcome back!');
@@ -63,15 +84,18 @@ export async function setupRegister(form) {
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     submit.textContent = 'Creating account�';
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { display_name: name } }
-    });
-    submit.disabled = false;
-    submit.textContent = 'Create account';
-    if (error) {
-      return showError(form, 'reg-email', error.message || 'Could not create account. Please try again.');
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { display_name: name } }
+      });
+      if (error) return showError(form, 'reg-email', authErrorMessage(error, 'Create account'));
+    } catch (error) {
+      return showError(form, 'reg-email', authErrorMessage(error, 'Create account'));
+    } finally {
+      submit.disabled = false;
+      submit.textContent = 'Create account';
     }
     showToast('Application received. Confirm your email, then wait for marketplace approval before shopping or selling.');
     const next = safeNextPage();
@@ -90,11 +114,14 @@ export async function setupReset(form) {
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     submit.textContent = 'Sending�';
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    submit.disabled = false;
-    submit.textContent = 'Send reset link';
-    if (error) {
-      return showError(form, 'reset-email', error.message || 'Could not send a reset link. Please try again.');
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) return showError(form, 'reset-email', authErrorMessage(error, 'Password reset'));
+    } catch (error) {
+      return showError(form, 'reset-email', authErrorMessage(error, 'Password reset'));
+    } finally {
+      submit.disabled = false;
+      submit.textContent = 'Send reset link';
     }
     form.reset();
     showToast('If an account exists for that email, you will receive a password reset link.');

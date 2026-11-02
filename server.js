@@ -57,8 +57,12 @@ app.get('/api/db/status', async (req, res) => {
   const status = {};
   for (const table of REQUIRED_TABLES) {
     const { error } = await dbFor(req).from(table).select('*').limit(1);
-    status[table] = error ? { exists: false, error: error.message }
-      : { exists: true };
+    const missing = error && ['PGRST205', '42P01'].includes(error.code);
+    status[table] = {
+      exists: !missing,
+      queryOk: !error,
+      ...(error ? { error: error.message, code: error.code } : {})
+    };
   }
   res.json(status);
 });
@@ -595,7 +599,7 @@ app.get('/api/admin/products', requireUser, requireRole(['admin']), async (req, 
     ? req.query.status : 'pending';
   const { data, error } = await dbFor(req)
     .from('products')
-    .select('id, name, description, price_cents, currency, status, moderation_status, moderation_note, created_at, seller_id, shop_id, product_images(id, url, is_main, sort_order), shops(name, slug), profiles(display_name, email)')
+    .select('id, name, description, price_cents, currency, status, moderation_status, moderation_note, created_at, seller_id, shop_id, product_images(id, url, is_main, sort_order), shops(name, slug), profiles:profiles!products_seller_id_fkey(display_name, email)')
     .eq('moderation_status', status)
     .order('created_at', { ascending: false })
     .limit(200);

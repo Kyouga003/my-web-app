@@ -339,6 +339,37 @@ create table if not exists public.order_items (
   updated_at timestamptz default now() not null
 );
 
+create or replace function public.is_order_buyer(target_order_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.orders o
+    where o.id = target_order_id and o.buyer_id = (select auth.uid())
+  );
+$$;
+
+create or replace function public.is_order_seller(target_order_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.order_items oi
+    where oi.order_id = target_order_id and oi.seller_id = (select auth.uid())
+  );
+$$;
+
+revoke all on function public.is_order_buyer(uuid) from public;
+revoke all on function public.is_order_seller(uuid) from public;
+grant execute on function public.is_order_buyer(uuid) to authenticated;
+grant execute on function public.is_order_seller(uuid) to authenticated;
+
 -- 9. Payments
 create table if not exists public.payments (
   id uuid default gen_random_uuid() primary key,
@@ -761,45 +792,18 @@ create policy "Users manage own favorites" on public.favorites
 
 -- Orders: buyer or a seller of an item in the order; admins all
 create policy "Orders visible to buyer and involved sellers" on public.orders
-  using (
-    auth.uid() = buyer_id
-    or exists (
-      select 1 from public.order_items
-      where order_items.order_id = orders.id and order_items.seller_id = auth.uid()
-    )
-    or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
-  );
+  using (public.is_order_buyer(id) or public.is_order_seller(id) or public.is_marketplace_admin());
 create policy "Buyers can create orders" on public.orders
   for insert with check (auth.uid() = buyer_id and public.is_account_approved());
 create policy "Buyers and sellers update own order scope" on public.orders
-  for update using (
-    auth.uid() = buyer_id
-    or exists (
-      select 1 from public.order_items
-      where order_items.order_id = orders.id and order_items.seller_id = auth.uid()
-    )
-    or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
-  );
+  for update using (public.is_order_buyer(id) or public.is_order_seller(id) or public.is_marketplace_admin());
 
 -- Order items: same scope as orders
 create policy "Order items visible to buyer and involved sellers" on public.order_items
-  using (
-    exists (
-      select 1 from public.orders where orders.id = order_items.order_id
-      and (orders.buyer_id = auth.uid()
-        or exists (
-          select 1 from public.order_items oi2
-          where oi2.order_id = order_items.order_id and oi2.seller_id = auth.uid()
-        ))
-    )
-    or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
-  );
+  using (public.is_order_buyer(order_id) or public.is_order_seller(order_id) or public.is_marketplace_admin());
 create policy "Order items insertable with order" on public.order_items
   for insert with check (
-    exists (
-      select 1 from public.orders where orders.id = order_items.order_id
-      and orders.buyer_id = auth.uid()
-    )
+    public.is_order_buyer(order_id)
     and public.is_account_approved()
   );
 
