@@ -370,15 +370,25 @@ async function syncImages(productId) {
       img.url = cfg.url + '/storage/v1/object/public/product-images/' + path;
       img.file = null;
     }
-    const { error } = await supabase.from('product_images').upsert([{
-      id: img.id || undefined,
-      product_id: productId,
-      storage_path: img.storage_path,
-      url: img.url,
-      is_main: img.is_main,
-      sort_order: order++
-    }], { onConflict: 'id' });
-    if (error) throw new Error('Image details could not be saved: ' + error.message);
+    let result;
+    if (img.id) {
+      result = await supabase.from('product_images').update({
+        product_id: productId,
+        storage_path: img.storage_path,
+        url: img.url,
+        is_main: img.is_main,
+        sort_order: order++
+      }).eq('id', img.id);
+    } else {
+      result = await supabase.from('product_images').insert([{
+        product_id: productId,
+        storage_path: img.storage_path,
+        url: img.url,
+        is_main: img.is_main,
+        sort_order: order++
+      }]);
+    }
+    if (result.error) throw new Error('Image details could not be saved: ' + result.error.message);
   }
   const remaining = images.filter((i) => !i.removed);
   const mains = remaining.filter((i) => i.is_main);
