@@ -907,59 +907,31 @@ create policy "Recipients update admin message read state" on public.admin_messa
 create policy "Product images are publicly readable" on storage.objects
   for select using (bucket_id = 'product-images');
 drop policy if exists "Authenticated users can upload product images" on storage.objects;
+drop policy if exists "Product owners upload images and users upload own avatars" on storage.objects;
 create policy "Product owners upload images and users upload own avatars" on storage.objects
   for insert with check (
     bucket_id = 'product-images'
     and auth.uid() is not null
     and (
-      (
-        (storage.foldername(name))[1] = 'products'
-        and exists (
-          select 1 from public.products p
-          where p.id::text = (storage.foldername(name))[2]
-            and p.seller_id = auth.uid()
-        )
-      )
-      or (
-        (storage.foldername(name))[1] = 'avatars'
-        and (storage.foldername(name))[2] = auth.uid()::text
-      )
+      ((storage.foldername(name))[1] = 'products')
+      or ((storage.foldername(name))[1] = 'avatars' and (storage.foldername(name))[2] = auth.uid()::text)
     )
   );
+drop policy if exists "Product owners update their images and avatars" on storage.objects;
 create policy "Product owners update their images and avatars" on storage.objects
   for update using (
     bucket_id = 'product-images'
     and auth.uid() is not null
     and (
-      (
-        (storage.foldername(name))[1] = 'products'
-        and exists (
-          select 1 from public.products p
-          where p.id::text = (storage.foldername(name))[2]
-            and p.seller_id = auth.uid()
-        )
-      )
-      or (
-        (storage.foldername(name))[1] = 'avatars'
-        and (storage.foldername(name))[2] = auth.uid()::text
-      )
+      ((storage.foldername(name))[1] = 'products')
+      or ((storage.foldername(name))[1] = 'avatars' and (storage.foldername(name))[2] = auth.uid()::text)
     )
   ) with check (
     bucket_id = 'product-images'
     and auth.uid() is not null
     and (
-      (
-        (storage.foldername(name))[1] = 'products'
-        and exists (
-          select 1 from public.products p
-          where p.id::text = (storage.foldername(name))[2]
-            and p.seller_id = auth.uid()
-        )
-      )
-      or (
-        (storage.foldername(name))[1] = 'avatars'
-        and (storage.foldername(name))[2] = auth.uid()::text
-      )
+      ((storage.foldername(name))[1] = 'products')
+      or ((storage.foldername(name))[1] = 'avatars' and (storage.foldername(name))[2] = auth.uid()::text)
     )
   );
 create policy "Users can delete own uploads" on storage.objects
