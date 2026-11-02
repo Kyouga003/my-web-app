@@ -27,6 +27,7 @@ const prodImageInput = document.getElementById('prod-image');
 const imagesList = document.getElementById('images-list');
 const btnSave = document.getElementById('prod-save');
 const btnCancel = document.getElementById('modal-cancel');
+const saveError = document.getElementById('prod-save-error');
 
 let images = []; // { id, url, storage_path, is_main, sort_order, file, removed }
 let editingId = null;
@@ -95,9 +96,11 @@ async function getSessionToken() {
 }
 
 async function getShopId() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError) throw new Error(userError.message);
   if (!user) return null;
-  const { data: shops } = await supabase.from('shops').select('id').eq('owner_id', user.id).limit(1);
+  const { data: shops, error } = await supabase.from('shops').select('id').eq('owner_id', user.id).limit(1);
+  if (error) throw new Error(error.message);
   return (shops && shops[0]) ? shops[0].id : null;
 }
 
@@ -166,6 +169,11 @@ async function fetchJson(path, body, method) {
 }
 
 function openProductModal(product) {
+  // Ensure button is bound
+  const btn = document.getElementById('prod-save');
+  if (btn) {
+    btn.onclick = function(e){ e.preventDefault(); e.stopPropagation(); saveProduct(); return false; };
+  }
   editingId = product ? product.id : null;
   images = (product && product.product_images ? product.product_images.slice() : []).map((img) => ({
     id: img.id, url: img.url, storage_path: img.storage_path, is_main: img.is_main, sort_order: img.sort_order, file: null, removed: false
@@ -213,6 +221,14 @@ btnCancel.addEventListener('click', () => closeModal(modal));
 modal.querySelector('.modal-close').addEventListener('click', () => closeModal(modal));
 modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(modal); });
+
+// Fallback click handler for save button (in case form attribute doesn't work)
+if (btnSave) {
+  btnSave.addEventListener('click', (e) => {
+    e.preventDefault();
+    saveProduct();
+  });
+}
 
 prodImageInput.addEventListener('change', (e) => {
   const files = Array.from(e.target.files || []);
@@ -265,30 +281,35 @@ window.removeImage = (index) => {
 };
 
 async function saveProduct() {
-  if (!prodName.value.trim()) return alert('Product name is required.');
-  const priceCents = Math.round(parseFloat(prodPrice.value || '0') * 100);
-  if (priceCents < 0) return alert('Price must be zero or more.');
-  const quantity = parseInt(prodQty.value || '0') || 0;
-  const tags = prodTags.value.split(',').map((t) => t.trim()).filter(Boolean);
-  const status = prodPublish.checked ? 'published' : 'draft';
-  const shopId = await getShopId();
-  if (!shopId) return alert('No shop found. Open a shop in the seller dashboard first.');
-  const payload = {
-    shop_id: shopId,
-    category_id: prodCategory.value || null,
-    name: prodName.value.trim(),
-    description: prodDesc.value.trim(),
-    price: priceCents / 100,
-    currency: 'USD',
-    status,
-    sku: prodSku.value.trim() || null,
-    quantity,
-    tags
-  };
-  const submit = btnSave;
-  submit.disabled = true;
-  submit.textContent = 'Saving�';
+  alert('SAVE CALLED');
+  console.error('SAVE CALLED');
+  if (btnSave.disabled) return;
+  saveError.textContent = '';
+  saveError.style.display = 'none';
+  btnSave.disabled = true;
+  btnSave.textContent = 'Saving...';
   try {
+    const name = prodName.value.trim();
+    if (!name) throw new Error('Product name is required.');
+    const price = Number(prodPrice.value);
+    if (!Number.isFinite(price) || price < 0) throw new Error('Enter a valid non-negative price.');
+    const quantity = Number(prodQty.value);
+    if (!Number.isInteger(quantity) || quantity < 0) throw new Error('Enter a valid non-negative stock quantity.');
+    const shopId = await getShopId();
+    if (!shopId) throw new Error('No seller shop is linked to this account. Open your shop from Seller dashboard first.');
+
+    const payload = {
+      shop_id: shopId,
+      category_id: prodCategory.value || null,
+      name,
+      description: prodDesc.value.trim(),
+      price,
+      currency: 'USD',
+      status: prodPublish.checked ? 'published' : 'draft',
+      sku: prodSku.value.trim() || null,
+      quantity,
+      tags: prodTags.value.split(',').map((tag) => tag.trim()).filter(Boolean)
+    };
     let product;
     if (editingId) {
       const { data, error } = await fetchJson('/api/products/' + editingId, payload, 'PATCH');
@@ -298,15 +319,21 @@ async function saveProduct() {
       const { data, error } = await fetchJson('/api/products', payload, 'POST');
       if (error) throw new Error(error);
       product = data;
+      editingId = product.id;
+      prodId.value = product.id;
     }
     await syncImages(product.id);
-    showToast('Product saved.');
+    showToast(product.moderation_status === 'pending'
+      ? 'Product saved and sent for admin review.'
+      : 'Product saved.');
     closeModal(modal);
-    loadProducts();
+    await loadProducts();
   } catch (err) {
-    submit.disabled = false;
-    submit.textContent = 'Save product';
-    alert('Failed to save product: ' + err.message);
+    saveError.textContent = err.message || 'Product could not be saved.';
+    saveError.style.display = 'block';
+  } finally {
+    btnSave.disabled = false;
+    btnSave.textContent = 'Save product';
   }
 }
 
@@ -318,7 +345,8 @@ async function syncImages(productId) {
         method: 'DELETE', headers: { Authorization: 'Bearer ' + (await getSessionToken()) }
       }).catch(() => {});
     }
-    await supabase.from('product_images').delete().eq('id', img.id);
+    const { error } = await supabase.from('product_images').delete().eq('id', img.id);
+    if (error) throw new Error('Could not remove image record: ' + error.message);
   }
   // Upsert images (new ones get inserted, existing keep their id)
   let order = 0;
@@ -342,7 +370,7 @@ async function syncImages(productId) {
       img.url = cfg.url + '/storage/v1/object/public/product-images/' + path;
       img.file = null;
     }
-    await supabase.from('product_images').upsert([{
+    const { error } = await supabase.from('product_images').upsert([{
       id: img.id || undefined,
       product_id: productId,
       storage_path: img.storage_path,
@@ -350,6 +378,7 @@ async function syncImages(productId) {
       is_main: img.is_main,
       sort_order: order++
     }], { onConflict: 'id' });
+    if (error) throw new Error('Image details could not be saved: ' + error.message);
   }
   const remaining = images.filter((i) => !i.removed);
   const mains = remaining.filter((i) => i.is_main);
@@ -358,14 +387,49 @@ async function syncImages(productId) {
     const ids = mains.slice(0, 1).concat(mains.slice(1)).filter((m) => m.id);
     // keep first main, demote the rest
     const demote = mains.slice(1).map((m) => m.id).filter(Boolean);
-    if (demote.length) await supabase.from('product_images').update({ is_main: false }).in('id', demote);
+    if (demote.length) {
+      const { error } = await supabase.from('product_images').update({ is_main: false }).in('id', demote);
+      if (error) throw new Error('Could not update main image: ' + error.message);
   }
+}
+
+window.saveProduct = saveProduct;
+
+// Also bind on load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('prod-save');
+    if (btn) {
+      btn.onclick = function(e) { e.preventDefault(); saveProduct(); };
+    }
+  });
+} else {
+  const btn = document.getElementById('prod-save');
+  if (btn) {
+    btn.onclick = function(e) { e.preventDefault(); saveProduct(); };
+  }
+}
 }
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
+  e.stopPropagation();
+  console.log('Form submit triggered');
   saveProduct();
-});
+  return false;
+}, true);
+
+// Global fallback
+document.addEventListener('click', (e) => {
+  const target = e.target;
+  if (target && (target.id === 'prod-save' || target.closest('#prod-save'))) {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Global click caught for prod-save');
+    saveProduct();
+    return false;
+  }
+}, true);
 
 window.editProduct = async (id) => {
   const { data, error } = await supabase.from('products').select('*, product_images(*)').eq('id', id).single();
@@ -385,12 +449,29 @@ window.togglePublish = async (id, toStatus) => {
   loadProducts();
 };
 
-window.deleteProduct = async (id, name) => {
-  if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
-  const { error } = await fetchJson('/api/products/' + id, null, 'DELETE');
-  if (error) return alert('Failed: ' + error);
-  showToast('Product deleted.');
-  loadProducts();
+window.testSave = () => {
+  console.log('window.testSave called');
+  saveProduct();
 };
 
-loadDbStatus();
+// Direct binding after elements exist
+setTimeout(() => {
+  const btn = document.getElementById('prod-save');
+  if (btn) {
+    btn.removeAttribute('onclick');
+    btn.onclick = function(e) { 
+      e.preventDefault(); 
+      e.stopPropagation(); 
+      console.log('Direct bind clicked'); 
+      saveProduct(); 
+      return false;
+    };
+    btn.addEventListener('click', function(e) { 
+      e.preventDefault(); 
+      e.stopPropagation(); 
+      console.log('Listener click'); 
+      saveProduct(); 
+      return false;
+    }, true);
+  }
+}, 500);

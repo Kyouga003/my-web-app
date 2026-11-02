@@ -38,8 +38,8 @@
     <div class="modal-body">
       <form id="product-form">
         <input type="hidden" id="prod-id">
-        <div class="form-group"><label>Product name</label><input type="text" id="prod-name" class="form-input" required></div>
-        <div class="form-group"><label>Description</label><textarea id="prod-desc" class="form-textarea" required></textarea></div>
+        <div class="form-group"><label>Product name</label><input type="text" id="prod-name" class="form-input"></div>
+        <div class="form-group"><label>Description</label><textarea id="prod-desc" class="form-textarea"></textarea></div>
         <div class="grid grid-cols-2">
           <div class="form-group"><label>Price (USD)</label><input type="number" id="prod-price" class="form-input" step="0.01" min="0" required></div>
           <div class="form-group"><label>Quantity in stock</label><input type="number" id="prod-qty" class="form-input" min="0" value="0" required></div>
@@ -52,11 +52,12 @@
         <div class="form-group" style="margin-top:0.75rem">
           <label><input type="checkbox" id="prod-publish"> Publish immediately (leave unchecked to save as draft)</label>
         </div>
+        <p id="prod-save-error" role="alert" aria-live="assertive" style="display:none;color:var(--danger);margin:0 0 0.75rem"></p>
       </form>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
-      <button class="btn btn-primary" id="prod-save">Save product</button>
+      <button class="btn btn-ghost" id="modal-cancel" type="button">Cancel</button>
+      <button class="btn btn-primary" id="prod-save" type="button">Save product</button>
     </div>
   </div>
 </div>
