@@ -918,7 +918,6 @@ create policy "Product owners upload images and users upload own avatars" on sto
           select 1 from public.products p
           where p.id::text = (storage.foldername(name))[2]
             and p.seller_id = auth.uid()
-            and public.is_account_approved()
         )
       )
       or (
@@ -938,7 +937,6 @@ create policy "Product owners update their images and avatars" on storage.object
           select 1 from public.products p
           where p.id::text = (storage.foldername(name))[2]
             and p.seller_id = auth.uid()
-            and public.is_account_approved()
         )
       )
       or (
@@ -956,7 +954,6 @@ create policy "Product owners update their images and avatars" on storage.object
           select 1 from public.products p
           where p.id::text = (storage.foldername(name))[2]
             and p.seller_id = auth.uid()
-            and public.is_account_approved()
         )
       )
       or (
