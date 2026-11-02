@@ -376,6 +376,11 @@ insert into storage.buckets (id, name, public)
 values ('product-images', 'product-images', true)
 on conflict (id) do nothing;
 
+update storage.buckets
+set file_size_limit = 4194304,
+    allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp']
+where id = 'product-images';
+
 -- 5. Product images (stored in Supabase Storage bucket 'product-images')
 create table if not exists public.product_images (
   id uuid default gen_random_uuid() primary key,
@@ -549,8 +554,7 @@ create policy "App can add notifications" on public.notifications
 create policy "App can add sales events" on public.sales_events
   for insert with check (auth.uid() is not null);
 
-create policy "App can add product images" on public.product_images
-  for insert with check (auth.uid() is not null);
+drop policy if exists "App can add product images" on public.product_images;
 
 create policy "App can add payment rows" on public.payments
   for insert with check (auth.uid() is not null);
@@ -600,8 +604,62 @@ create policy "Admins read support messages" on public.messages for select
 -- Storage: product-images bucket — public read, authenticated upload
 create policy "Product images are publicly readable" on storage.objects
   for select using (bucket_id = 'product-images');
-create policy "Authenticated users can upload product images" on storage.objects
-  for insert with check (bucket_id = 'product-images' and auth.uid() is not null);
+drop policy if exists "Authenticated users can upload product images" on storage.objects;
+create policy "Product owners upload images and users upload own avatars" on storage.objects
+  for insert with check (
+    bucket_id = 'product-images'
+    and auth.uid() is not null
+    and (
+      (
+        (storage.foldername(name))[1] = 'products'
+        and exists (
+          select 1 from public.products p
+          where p.id::text = (storage.foldername(name))[2]
+            and p.seller_id = auth.uid()
+        )
+      )
+      or (
+        (storage.foldername(name))[1] = 'avatars'
+        and (storage.foldername(name))[2] = auth.uid()::text
+      )
+    )
+  );
+create policy "Product owners update their images and avatars" on storage.objects
+  for update using (
+    bucket_id = 'product-images'
+    and auth.uid() is not null
+    and (
+      (
+        (storage.foldername(name))[1] = 'products'
+        and exists (
+          select 1 from public.products p
+          where p.id::text = (storage.foldername(name))[2]
+            and p.seller_id = auth.uid()
+        )
+      )
+      or (
+        (storage.foldername(name))[1] = 'avatars'
+        and (storage.foldername(name))[2] = auth.uid()::text
+      )
+    )
+  ) with check (
+    bucket_id = 'product-images'
+    and auth.uid() is not null
+    and (
+      (
+        (storage.foldername(name))[1] = 'products'
+        and exists (
+          select 1 from public.products p
+          where p.id::text = (storage.foldername(name))[2]
+            and p.seller_id = auth.uid()
+        )
+      )
+      or (
+        (storage.foldername(name))[1] = 'avatars'
+        and (storage.foldername(name))[2] = auth.uid()::text
+      )
+    )
+  );
 create policy "Users can delete own uploads" on storage.objects
   for delete using (bucket_id = 'product-images' and auth.uid() = owner);
 

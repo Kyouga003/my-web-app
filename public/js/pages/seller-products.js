@@ -1,10 +1,11 @@
-// Seller product management — create, edit, publish/unpublish, delete, images.
+// Seller product management ï¿½ create, edit, publish/unpublish, delete, images.
 import { supabase } from '/js/init.js';
 import { formatMoney, escapeHtml, showToast, openModal, closeModal } from '/js/ui.js';
 import { renderAuthLinks, updateCartCount } from '/js/nav.js';
 
 const cfg = window.SUPABASE_CONFIG || {};
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const requireAuthEl = document.getElementById('seller-products-require-auth');
 const wrap = document.getElementById('seller-products-wrap');
@@ -55,6 +56,15 @@ window.addEventListener('authstate', async () => {
   renderAuthLinks(currentUser, prof && prof.data);
   if (!currentUser) {
     requireAuthEl.style.display = 'block';
+    updateCartCount(0);
+    return;
+  }
+  if (!prof || !prof.data || prof.data.role !== 'seller') {
+    requireAuthEl.innerHTML = prof?.data?.role === 'admin'
+      ? '<p>Product management is in the seller workspace. <a href="admin.html">Open administration</a>.</p>'
+      : '<p>Open a shop before managing products. <a href="seller-dashboard.html">Start seller setup</a>.</p>';
+    requireAuthEl.style.display = 'block';
+    wrap.style.display = 'none';
     updateCartCount(0);
     return;
   }
@@ -123,7 +133,7 @@ function renderProductsTable(rows) {
       <tr>\
         <td><img src="' + escapeHtml(imgUrl) + '" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)"></td>\
         <td style="font-weight:600">' + escapeHtml(p.name) + '</td>\
-        <td>' + escapeHtml(p.category_name || '—') + '</td>\
+        <td>' + escapeHtml(p.category_name || 'ï¿½') + '</td>\
         <td>' + formatMoney(p.price_cents, p.currency) + '</td>\
         <td class="product-stock ' + stockClass + '">' + stockLabel + '</td>\
         <td><span class="badge ' + (p.status === 'published' ? 'badge-success' : 'badge-draft') + '">' + escapeHtml(p.status) + '</span></td>\
@@ -202,12 +212,12 @@ window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(m
 prodImageInput.addEventListener('change', (e) => {
   const files = Array.from(e.target.files || []);
   for (const file of files) {
-    if (!file.type.startsWith('image/')) { showToast('Please select image files only.', 'error'); continue; }
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) { showToast('Use JPEG, PNG, or WebP images.', 'error'); continue; }
     if (file.size > MAX_FILE_SIZE) { showToast('Image must be under 4 MB.', 'error'); continue; }
     images.push({ id: null, url: URL.createObjectURL(file), storage_path: null, is_main: false, sort_order: images.length, file, removed: false });
   }
-  if (images.length && !images.some((i) => i.is_main && !i.file)) {
-    const first = images.find((i) => !i.file);
+  if (images.length && !images.some((i) => i.is_main && !i.removed)) {
+    const first = images.find((i) => !i.removed);
     if (first) first.is_main = true;
   }
   e.target.value = '';
@@ -223,7 +233,7 @@ function renderImages() {
         <img src="' + escapeHtml(img.url) + '" style="width:110px;height:110px;object-fit:cover;border:2px solid ' + (isMain ? 'var(--brand-purple)' : 'var(--border)') + ';border-radius:var(--radius)">\
         <div style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px">' + (isMain ? 'Main' : 'Alternate') + '</div>\
         <button type="button" onclick="setMainImage(' + index + ')" style="position:absolute;bottom:2px;right:2px;background:var(--brand-purple);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:0.7rem;' + (isMain ? 'display:none' : 'display:block') + '">Main</button>\
-        <button type="button" onclick="removeImage(' + index + ')" style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:none;cursor:pointer;font-size:0.7rem;line-height:1">×</button>\
+        <button type="button" onclick="removeImage(' + index + ')" style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:none;cursor:pointer;font-size:0.7rem;line-height:1">ï¿½</button>\
         ' + (img.file ? '<div style="font-size:0.7rem;color:var(--text-secondary);text-align:center;margin-top:0.25rem">Ready to upload</div>' : '') + '\
       </div>';
   });
@@ -272,7 +282,7 @@ async function saveProduct() {
   };
   const submit = btnSave;
   submit.disabled = true;
-  submit.textContent = 'Saving…';
+  submit.textContent = 'Savingï¿½';
   try {
     let product;
     if (editingId) {
@@ -282,7 +292,7 @@ async function saveProduct() {
     } else {
       const { data, error } = await fetchJson('/api/products', payload, 'POST');
       if (error) throw new Error(error);
-      product = data[0];
+      product = data;
     }
     await syncImages(product.id);
     showToast('Product saved.');

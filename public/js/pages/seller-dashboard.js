@@ -1,4 +1,4 @@
-// Seller dashboard — onboarding, stats, recent orders.
+// Seller dashboard ï¿½ onboarding, stats, recent orders.
 import { supabase } from '/js/init.js';
 import { formatMoney, escapeHtml, showToast } from '/js/ui.js';
 import { renderAuthLinks, updateCartCount, refreshCartCount } from '/js/nav.js';
@@ -90,6 +90,11 @@ window.addEventListener('authstate', async () => {
   requireAuthEl.style.display = 'none';
   const role = prof.data.role;
   updateCartCount(0);
+
+  if (role === 'admin') {
+    window.location.replace('admin.html');
+    return;
+  }
 
   const onboardForm = document.getElementById('onboard-form');
   if (role === 'buyer') {
