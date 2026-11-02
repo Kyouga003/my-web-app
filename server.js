@@ -49,7 +49,8 @@ app.get('/api/health', async (req, res) => {
 const REQUIRED_TABLES = [
   'profiles', 'categories', 'shops', 'products', 'product_images', 'carts',
   'cart_items', 'favorites', 'orders', 'order_items', 'payments', 'reviews',
-  'notifications', 'sales_events', 'seller_inquiries', 'reports', 'messages'
+  'notifications', 'sales_events', 'seller_inquiries', 'reports', 'messages',
+  'admin_messages'
 ];
 
 app.get('/api/db/status', async (req, res) => {
@@ -97,6 +98,23 @@ function requireRole(allowed) {
   };
 }
 
+async function requireApproved(req, res, next) {
+  const { data: profile, error } = await dbFor(req)
+    .from('profiles')
+    .select('role, approval_status')
+    .eq('id', req.user.id)
+    .single();
+  if (error || !profile) return res.status(403).json({ error: 'Account profile is unavailable' });
+  if (profile.role !== 'admin' && profile.approval_status !== 'approved') {
+    return res.status(403).json({
+      error: profile.approval_status === 'rejected' ? 'Account application was not approved' : 'Account approval is pending',
+      approval_status: profile.approval_status
+    });
+  }
+  req.profile = profile;
+  next();
+}
+
 // ---------------------------------------------------------------------------
 // Support / contact messages
 // ---------------------------------------------------------------------------
@@ -131,7 +149,7 @@ app.get('/api/categories', async (req, res) => {
 app.get('/api/shops', async (req, res) => {
   const { data, error } = await supabase
     .from('shops')
-    .select('*, profiles(display_name, avatar_url)')
+    .select('*, profiles:public_profiles(display_name, avatar_url, bio)')
     .eq('is_active', true)
     .order('name');
   if (error) return res.status(500).json({ error: error.message });
@@ -141,7 +159,7 @@ app.get('/api/shops', async (req, res) => {
 app.get('/api/shops/:slug', async (req, res) => {
   const { data: shop, error } = await supabase
     .from('shops')
-    .select('*, profiles(*)')
+    .select('*, profiles:public_profiles(*)')
     .eq('slug', req.params.slug)
     .single();
   if (error || !shop) return res.status(404).json({ error: 'Shop not found' });
@@ -157,7 +175,7 @@ app.get('/api/shops/:slug', async (req, res) => {
 // ---------------------------------------------------------------------------
 // Seller: shop management (auth required)
 // ---------------------------------------------------------------------------
-app.post('/api/shops', requireUser, async (req, res) => {
+app.post('/api/shops', requireUser, requireApproved, async (req, res) => {
   const { name, slug, description, location, processing_time, shipping_info, return_policy, social_links } = req.body;
   if (!name || !slug) return res.status(400).json({ error: 'Shop name and slug are required' });
   const { data: profile } = await dbFor(req).from('profiles').select('role, id').eq('id', req.user.id).single();
@@ -175,7 +193,7 @@ app.post('/api/shops', requireUser, async (req, res) => {
   res.status(201).json(data[0]);
 });
 
-app.patch('/api/shops/:id', requireUser, async (req, res) => {
+app.patch('/api/shops/:id', requireUser, requireApproved, async (req, res) => {
   const { data: shop } = await dbFor(req).from('shops').select('owner_id').eq('id', req.params.id).single();
   if (!shop || shop.owner_id !== req.user.id) {
     return res.status(403).json({ error: 'Not your shop' });
@@ -188,7 +206,7 @@ app.patch('/api/shops/:id', requireUser, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Seller inquiries (buyer-to-seller contact)
 // ---------------------------------------------------------------------------
-app.post('/api/seller-inquiries', requireUser, async (req, res) => {
+app.post('/api/seller-inquiries', requireUser, requireApproved, async (req, res) => {
   const { shop_id, product_id, subject, message } = req.body || {};
   if (!shop_id || !subject || !message) {
     return res.status(400).json({ error: 'Shop, subject and message are required' });
@@ -202,7 +220,7 @@ app.post('/api/seller-inquiries', requireUser, async (req, res) => {
   res.status(201).json(data[0]);
 });
 
-app.get('/api/seller-inquiries', requireUser, async (req, res) => {
+app.get('/api/seller-inquiries', requireUser, requireApproved, async (req, res) => {
   const { data: profile } = await dbFor(req).from('profiles').select('role').eq('id', req.user.id).single();
   const isAdmin = profile && profile.role === 'admin';
   let shopIds = null;
@@ -211,7 +229,7 @@ app.get('/api/seller-inquiries', requireUser, async (req, res) => {
     shopIds = (shops || []).map(s => s.id);
     if (shopIds.length === 0) return res.json([]);
   }
-  let query = dbFor(req).from('seller_inquiries').select('*, shops(name, slug), profiles(display_name)').order('created_at', { ascending: false });
+  let query = dbFor(req).from('seller_inquiries').select('*, shops(name, slug), profiles:public_profiles(display_name)').order('created_at', { ascending: false });
   if (!isAdmin) query = query.in('shop_id', shopIds);
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
@@ -221,7 +239,7 @@ app.get('/api/seller-inquiries', requireUser, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Seller: product management (auth required, ownership enforced)
 // ---------------------------------------------------------------------------
-app.post('/api/products', requireUser, async (req, res) => {
+app.post('/api/products', requireUser, requireApproved, async (req, res) => {
   const {
     shop_id, category_id, name, description, price, currency, status, sku,
     quantity, condition, materials, dimensions, weight, color, style,
@@ -232,11 +250,16 @@ app.post('/api/products', requireUser, async (req, res) => {
   if (!shop || shop.owner_id !== req.user.id) {
     return res.status(403).json({ error: 'Not your shop' });
   }
-  const priceCents = Math.round(parseFloat(price) * 100) || 0;
+  const parsedPrice = Number(price);
+  const parsedQuantity = Number(quantity);
+  if (!Number.isFinite(parsedPrice) || parsedPrice < 0 || !Number.isInteger(parsedQuantity) || parsedQuantity < 0) {
+    return res.status(400).json({ error: 'Enter a valid non-negative price and stock quantity' });
+  }
+  const priceCents = Math.round(parsedPrice * 100);
   const { data, error } = await dbFor(req).from('products').insert([{
     seller_id: req.user.id, shop_id, category_id, name, description,
     price_cents: priceCents, currency: currency || 'USD',
-    status: status || 'draft', sku, quantity: parseInt(quantity) || 0,
+    status: status || 'draft', moderation_status: 'pending', sku, quantity: parsedQuantity,
     condition, materials, dimensions, weight, color, style,
     personalization, processing_time, shipping_info,
     tags: Array.isArray(tags) ? tags : [],
@@ -246,16 +269,37 @@ app.post('/api/products', requireUser, async (req, res) => {
   res.status(201).json(data[0]);
 });
 
-app.patch('/api/products/:id', requireUser, async (req, res) => {
+app.patch('/api/products/:id', requireUser, requireApproved, async (req, res) => {
   const { data: product } = await dbFor(req).from('products').select('seller_id, status').eq('id', req.params.id).single();
   if (!product || product.seller_id !== req.user.id) {
     return res.status(403).json({ error: 'Not your product' });
   }
-  const updates = { ...req.body };
-  if (updates.price !== undefined) updates.price_cents = Math.round(parseFloat(updates.price) * 100);
-  delete updates.price;
+  const allowedFields = [
+    'category_id', 'name', 'description', 'currency', 'status', 'sku', 'quantity',
+    'condition', 'materials', 'dimensions', 'weight', 'color', 'style',
+    'personalization', 'processing_time', 'shipping_info', 'tags'
+  ];
+  const body = req.body || {};
+  const updates = Object.fromEntries(
+    allowedFields.filter(field => Object.hasOwn(body, field)).map(field => [field, body[field]])
+  );
+  if (updates.status && !['draft', 'published'].includes(updates.status)) {
+    return res.status(400).json({ error: 'Invalid listing status' });
+  }
+  if (Object.hasOwn(body, 'price')) {
+    const price = Number(body.price);
+    if (!Number.isFinite(price) || price < 0) return res.status(400).json({ error: 'Enter a valid non-negative price' });
+    updates.price_cents = Math.round(price * 100);
+  }
   if (updates.status === 'published' && product.status !== 'published') {
     updates.published_at = new Date().toISOString();
+  }
+  const contentChanged = Object.keys(updates).some(field => field !== 'status');
+  if (contentChanged || updates.status === 'published') {
+    updates.moderation_status = 'pending';
+    updates.moderation_note = null;
+    updates.reviewed_at = null;
+    updates.reviewed_by = null;
   }
   const { data, error } = await dbFor(req).from('products').update(updates).eq('id', req.params.id).select();
   if (error) return res.status(500).json({ error: error.message });
@@ -263,7 +307,7 @@ app.patch('/api/products/:id', requireUser, async (req, res) => {
   res.json(data[0]);
 });
 
-app.delete('/api/products/:id', requireUser, async (req, res) => {
+app.delete('/api/products/:id', requireUser, requireApproved, async (req, res) => {
   const { data: product } = await dbFor(req).from('products').select('seller_id').eq('id', req.params.id).single();
   if (!product || product.seller_id !== req.user.id) {
     return res.status(403).json({ error: 'Not your product' });
@@ -276,7 +320,7 @@ app.delete('/api/products/:id', requireUser, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Buyer: orders (server-validated totals and stock)
 // ---------------------------------------------------------------------------
-app.post('/api/orders', requireUser, async (req, res) => {
+app.post('/api/orders', requireUser, requireApproved, async (req, res) => {
   const { items, shipping_address, delivery_method, notes, payment_intent_id } = req.body;
   if (!Array.isArray(items) || !items.length) {
     return res.status(400).json({ error: 'No items in order' });
@@ -389,7 +433,7 @@ app.post('/api/orders', requireUser, async (req, res) => {
   res.status(201).json({ order, payment_intent_id: payment_intent_id || null });
 });
 
-app.get('/api/orders/:id', requireUser, async (req, res) => {
+app.get('/api/orders/:id', requireUser, requireApproved, async (req, res) => {
   const { data: order, error } = await dbFor(req)
     .from('orders').select('*, order_items(*)').eq('id', req.params.id).single();
   if (error || !order) return res.status(404).json({ error: 'Order not found' });
@@ -401,7 +445,7 @@ app.get('/api/orders/:id', requireUser, async (req, res) => {
   res.json(order);
 });
 
-app.get('/api/orders', requireUser, async (req, res) => {
+app.get('/api/orders', requireUser, requireApproved, async (req, res) => {
   const { data: profile } = await dbFor(req).from('profiles').select('role').eq('id', req.user.id).single();
   let query = dbFor(req).from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
   if (profile.role === 'admin') {
@@ -416,7 +460,7 @@ app.get('/api/orders', requireUser, async (req, res) => {
   res.json(data || []);
 });
 
-app.patch('/api/orders/:id/ship', requireUser, async (req, res) => {
+app.patch('/api/orders/:id/ship', requireUser, requireApproved, async (req, res) => {
   const { tracking_number } = req.body;
   const { data: order } = await dbFor(req).from('orders').select('*, order_items(*)').eq('id', req.params.id).single();
   if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -440,7 +484,7 @@ app.patch('/api/orders/:id/ship', requireUser, async (req, res) => {
   res.json(data);
 });
 
-app.patch('/api/orders/:id/cancel', requireUser, async (req, res) => {
+app.patch('/api/orders/:id/cancel', requireUser, requireApproved, async (req, res) => {
   const { data: order } = await dbFor(req).from('orders').select('*, order_items(*)').eq('id', req.params.id).single();
   if (!order) return res.status(404).json({ error: 'Order not found' });
   if (order.buyer_id !== req.user.id) return res.status(403).json({ error: 'Not your order' });
@@ -467,7 +511,7 @@ app.patch('/api/orders/:id/cancel', requireUser, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Payments — SANDBOX (no live payment provider configured)
 // ---------------------------------------------------------------------------
-app.post('/api/payments/create-intent', requireUser, async (req, res) => {
+app.post('/api/payments/create-intent', requireUser, requireApproved, async (req, res) => {
   const { amount_cents } = req.body;
   if (!amount_cents || amount_cents <= 0) return res.status(400).json({ error: 'Invalid amount' });
   const intentId = 'sandbox_intent_' + Date.now().toString(36);
@@ -478,7 +522,7 @@ app.post('/api/payments/create-intent', requireUser, async (req, res) => {
   res.json({ intent_id: intentId, amount_cents, currency: 'USD', test: true });
 });
 
-app.post('/api/payments/confirm', requireUser, async (req, res) => {
+app.post('/api/payments/confirm', requireUser, requireApproved, async (req, res) => {
   const { intent_id } = req.body;
   const { data: payment } = await dbFor(req).from('payments').select('*, orders(*)').eq('provider_payment_id', intent_id).single();
   if (!payment) return res.status(404).json({ error: 'Payment not found' });
@@ -505,6 +549,139 @@ app.post('/api/payments/confirm', requireUser, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Admin
 // ---------------------------------------------------------------------------
+app.get('/api/admin/accounts', requireUser, requireRole(['admin']), async (req, res) => {
+  const allowedStatuses = ['pending', 'approved', 'rejected'];
+  const status = req.query.status;
+  let query = dbFor(req)
+    .from('profiles')
+    .select('id, display_name, email, role, approval_status, created_at, approved_at')
+    .order('created_at', { ascending: false })
+    .limit(300);
+  if (allowedStatuses.includes(status)) query = query.eq('approval_status', status);
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+app.patch('/api/admin/accounts/:id/approval', requireUser, requireRole(['admin']), async (req, res) => {
+  const { approval_status } = req.body || {};
+  if (!['approved', 'rejected'].includes(approval_status)) {
+    return res.status(400).json({ error: 'Choose approved or rejected' });
+  }
+  const updates = {
+    approval_status,
+    approved_at: approval_status === 'approved' ? new Date().toISOString() : null,
+    approved_by: approval_status === 'approved' ? req.user.id : null
+  };
+  const { data, error } = await dbFor(req)
+    .from('profiles').update(updates).eq('id', req.params.id)
+    .select('id, display_name, email, role, approval_status, approved_at').maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: 'Account not found' });
+  await dbFor(req).from('notifications').insert([{
+    user_id: data.id,
+    type: 'account_review',
+    title: approval_status === 'approved' ? 'Account approved' : 'Account not approved',
+    body: approval_status === 'approved'
+      ? 'Your account is approved. You can now shop and open a seller shop.'
+      : 'Your account application was not approved. Contact support if you believe this is an error.',
+    link: '/profile.html'
+  }]);
+  res.json(data);
+});
+
+app.get('/api/admin/products', requireUser, requireRole(['admin']), async (req, res) => {
+  const status = ['pending', 'approved', 'rejected'].includes(req.query.status)
+    ? req.query.status : 'pending';
+  const { data, error } = await dbFor(req)
+    .from('products')
+    .select('id, name, description, price_cents, currency, status, moderation_status, moderation_note, created_at, seller_id, shop_id, product_images(id, url, is_main, sort_order), shops(name, slug), profiles(display_name, email)')
+    .eq('moderation_status', status)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+app.patch('/api/admin/products/:id/review', requireUser, requireRole(['admin']), async (req, res) => {
+  const { decision, note } = req.body || {};
+  if (!['approved', 'rejected'].includes(decision)) {
+    return res.status(400).json({ error: 'Choose approved or rejected' });
+  }
+  const moderationNote = typeof note === 'string' ? note.trim().slice(0, 1000) : '';
+  const updates = {
+    moderation_status: decision,
+    moderation_note: moderationNote || null,
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: req.user.id,
+    ...(decision === 'rejected' ? { status: 'draft' } : {})
+  };
+  const { data, error } = await dbFor(req)
+    .from('products').update(updates).eq('id', req.params.id)
+    .select('id, name, seller_id, moderation_status, status').maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: 'Product not found' });
+  await dbFor(req).from('notifications').insert([{
+    user_id: data.seller_id,
+    type: 'product_review',
+    title: decision === 'approved' ? 'Product approved' : 'Product needs changes',
+    body: decision === 'approved'
+      ? 'Your product "' + data.name + '" was approved.'
+      : 'Your product "' + data.name + '" was not approved.' + (moderationNote ? ' Note: ' + moderationNote : ''),
+    link: '/seller-products.html'
+  }]);
+  res.json(data);
+});
+
+app.post('/api/admin/messages', requireUser, requireRole(['admin']), async (req, res) => {
+  const { recipient_id, product_id, subject, body } = req.body || {};
+  if (!recipient_id || !subject || !body || typeof subject !== 'string' || typeof body !== 'string') {
+    return res.status(400).json({ error: 'Recipient, subject and message are required' });
+  }
+  const { data: recipient, error: recipientError } = await dbFor(req)
+    .from('profiles').select('id').eq('id', recipient_id).maybeSingle();
+  if (recipientError) return res.status(500).json({ error: recipientError.message });
+  if (!recipient) return res.status(404).json({ error: 'Account not found' });
+  const { data, error } = await dbFor(req).from('admin_messages').insert([{
+    admin_id: req.user.id,
+    recipient_id,
+    product_id: product_id || null,
+    subject: subject.trim().slice(0, 160),
+    body: body.trim().slice(0, 5000)
+  }]).select('id, recipient_id, product_id, subject, body, created_at').single();
+  if (error) return res.status(500).json({ error: error.message });
+  await dbFor(req).from('notifications').insert([{
+    user_id: recipient_id,
+    type: 'admin_message',
+    title: 'Message from marketplace administration',
+    body: data.subject,
+    link: '/profile.html#admin-messages'
+  }]);
+  res.status(201).json(data);
+});
+
+app.get('/api/account/admin-messages', requireUser, async (req, res) => {
+  const { data, error } = await dbFor(req).from('admin_messages')
+    .select('id, subject, body, product_id, read_at, created_at')
+    .eq('recipient_id', req.user.id)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+app.patch('/api/account/admin-messages/:id/read', requireUser, async (req, res) => {
+  const { data, error } = await dbFor(req).from('admin_messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', req.params.id)
+    .eq('recipient_id', req.user.id)
+    .select('id, read_at')
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: 'Message not found' });
+  res.json(data);
+});
+
 app.get('/api/admin/orders', requireUser, requireRole(['admin']), async (req, res) => {
   const { data, error } = await dbFor(req).from('orders').select('*, profiles(display_name)').order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });

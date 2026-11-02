@@ -73,7 +73,7 @@ export async function setupRegister(form) {
     if (error) {
       return showError(form, 'reg-email', error.message || 'Could not create account. Please try again.');
     }
-    showToast('Account created! Check your email to confirm your address, then sign in.');
+    showToast('Application received. Confirm your email, then wait for marketplace approval before shopping or selling.');
     const next = safeNextPage();
     window.location.href = next ? 'login.html?next=' + encodeURIComponent(next) : 'login.html';
   });

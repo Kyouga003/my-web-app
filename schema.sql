@@ -24,6 +24,87 @@ create table if not exists public.profiles (
   updated_at timestamptz default now() not null
 );
 
+alter table public.profiles
+  add column if not exists approval_status text not null default 'approved',
+  add column if not exists approved_at timestamptz,
+  add column if not exists approved_by uuid references public.profiles(id);
+alter table public.profiles alter column approval_status set default 'pending';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.profiles'::regclass
+      and conname = 'profiles_approval_status_check'
+  ) then
+    alter table public.profiles
+      add constraint profiles_approval_status_check
+      check (approval_status in ('pending', 'approved', 'rejected'));
+  end if;
+end $$;
+
+create or replace function public.is_marketplace_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    auth.jwt() ->> 'role' = 'service_role'
+    or auth.jwt() -> 'app_metadata' ->> 'marketplace_role' = 'admin',
+    false
+  );
+$$;
+
+create or replace function public.is_account_approved()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles p
+    where p.id = (select auth.uid()) and p.approval_status = 'approved'
+  );
+$$;
+
+create or replace function public.guard_admin_message_updates()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if public.is_marketplace_admin() then
+    return new;
+  end if;
+
+  if auth.uid() = old.recipient_id
+    and new.id is not distinct from old.id
+    and new.admin_id is not distinct from old.admin_id
+    and new.recipient_id is not distinct from old.recipient_id
+    and new.product_id is not distinct from old.product_id
+    and new.subject is not distinct from old.subject
+    and new.body is not distinct from old.body
+    and new.created_at is not distinct from old.created_at then
+    return new;
+  end if;
+
+  raise exception 'Only the recipient can mark this message as read';
+end;
+$$;
+
+revoke all on function public.is_marketplace_admin() from public;
+revoke all on function public.is_account_approved() from public;
+grant execute on function public.is_marketplace_admin() to anon, authenticated;
+grant execute on function public.is_account_approved() to anon, authenticated;
+
+create or replace view public.public_profiles as
+  select id, display_name, avatar_url, bio, created_at
+  from public.profiles;
+grant select on public.public_profiles to anon, authenticated;
+
 -- 2. Categories
 create table if not exists public.categories (
   id uuid default gen_random_uuid() primary key,
@@ -35,22 +116,43 @@ create table if not exists public.categories (
 
 -- Auto-create a profile row when Supabase Auth creates the user
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
 begin
   insert into public.profiles (id, display_name, email)
   values (
     new.id,
-    coalesce((new.raw_user_meta_data ->> 'display_name'), split_part(new.email, '@', 1)),
+    coalesce(
+      nullif(new.raw_user_meta_data ->> 'display_name', ''),
+      nullif(split_part(coalesce(new.email, ''), '@', 1), ''),
+      'Maker'
+    ),
     new.email
-  );
+  )
+  on conflict (id) do nothing;
   return new;
 end;
-$$ language plpgsql;
+$$;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
+
+insert into public.profiles (id, display_name, email)
+select
+  u.id,
+  coalesce(
+    nullif(u.raw_user_meta_data ->> 'display_name', ''),
+    nullif(split_part(coalesce(u.email, ''), '@', 1), ''),
+    'Maker'
+  ),
+  u.email
+from auth.users u
+on conflict (id) do nothing;
 
 
 -- 3. Seller shops
@@ -81,19 +183,24 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if new.role is not distinct from old.role then
+  if new.role is not distinct from old.role
+    and new.approval_status is not distinct from old.approval_status
+    and new.approved_at is not distinct from old.approved_at
+    and new.approved_by is not distinct from old.approved_by then
     return new;
   end if;
 
   if auth.uid() = old.id
     and old.role = 'buyer'
     and new.role = 'seller'
+    and new.approval_status is not distinct from old.approval_status
+    and new.approved_at is not distinct from old.approved_at
+    and new.approved_by is not distinct from old.approved_by
     and exists (select 1 from public.shops where owner_id = old.id) then
     return new;
   end if;
 
-  if auth.uid() is not null
-    and exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') then
+  if public.is_marketplace_admin() then
     return new;
   end if;
 
@@ -141,6 +248,26 @@ create table if not exists public.products (
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
+
+alter table public.products
+  add column if not exists moderation_status text not null default 'approved',
+  add column if not exists moderation_note text,
+  add column if not exists reviewed_at timestamptz,
+  add column if not exists reviewed_by uuid references public.profiles(id);
+alter table public.products alter column moderation_status set default 'pending';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.products'::regclass
+      and conname = 'products_moderation_status_check'
+  ) then
+    alter table public.products
+      add constraint products_moderation_status_check
+      check (moderation_status in ('pending', 'approved', 'rejected'));
+  end if;
+end $$;
 
 -- 5. Product images (stored in Supabase Storage bucket 'product-images')
 create table if not exists public.product_images (
@@ -289,6 +416,22 @@ create table if not exists public.messages (
   created_at timestamptz default now() not null
 );
 
+create table if not exists public.admin_messages (
+  id uuid default gen_random_uuid() primary key,
+  admin_id uuid references public.profiles(id) on delete set null,
+  recipient_id uuid references public.profiles(id) on delete cascade not null,
+  product_id uuid references public.products(id) on delete set null,
+  subject text not null,
+  body text not null,
+  read_at timestamptz,
+  created_at timestamptz default now() not null
+);
+
+drop trigger if exists guard_admin_message_updates on public.admin_messages;
+create trigger guard_admin_message_updates
+before update on public.admin_messages
+for each row execute function public.guard_admin_message_updates();
+
 -- 14. Reports / moderation
 create table if not exists public.reports (
   id uuid default gen_random_uuid() primary key,
@@ -308,7 +451,10 @@ create index if not exists idx_products_shop on public.products(shop_id);
 create index if not exists idx_products_status on public.products(status);
 create index if not exists idx_products_category on public.products(category_id);
 create index if not exists idx_products_seller on public.products(seller_id);
+create index if not exists idx_products_moderation on public.products(moderation_status, created_at desc);
+create index if not exists idx_profiles_approval on public.profiles(approval_status, created_at desc);
 create index if not exists idx_product_images_product on public.product_images(product_id);
+create index if not exists idx_admin_messages_recipient on public.admin_messages(recipient_id, created_at desc);
 create index if not exists idx_order_items_order on public.order_items(order_id);
 create index if not exists idx_order_items_product on public.order_items(product_id);
 create index if not exists idx_order_items_seller on public.order_items(seller_id);
@@ -369,6 +515,54 @@ create trigger trg_guard_quantity
 before update of quantity on public.products
 for each row execute function public.guard_non_negative_quantity();
 
+create or replace function public.guard_product_moderation_changes()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.moderation_status <> 'pending'
+      or new.moderation_note is not null
+      or new.reviewed_at is not null
+      or new.reviewed_by is not null then
+      raise exception 'New listings must be submitted for moderation';
+    end if;
+    return new;
+  end if;
+
+  if new.moderation_status is not distinct from old.moderation_status
+    and new.moderation_note is not distinct from old.moderation_note
+    and new.reviewed_at is not distinct from old.reviewed_at
+    and new.reviewed_by is not distinct from old.reviewed_by then
+    return new;
+  end if;
+
+  if auth.uid() is null
+    or auth.jwt() ->> 'role' = 'service_role'
+    or public.is_marketplace_admin() then
+    return new;
+  end if;
+
+  if auth.uid() = new.seller_id
+    and new.moderation_status = 'pending'
+    and new.moderation_note is null
+    and new.reviewed_at is null
+    and new.reviewed_by is null then
+    return new;
+  end if;
+
+  raise exception 'Only administrators can approve or reject listings';
+end;
+$$;
+
+drop trigger if exists guard_product_moderation_changes on public.products;
+create trigger guard_product_moderation_changes
+before insert or update
+on public.products
+for each row execute function public.guard_product_moderation_changes();
+
 -- ============================================================================
 -- Realtime publication for the live sales feed
 -- ============================================================================
@@ -425,12 +619,14 @@ alter table public.sales_events enable row level security;
 alter table public.seller_inquiries enable row level security;
 alter table public.reports enable row level security;
 alter table public.messages enable row level security;
+alter table public.admin_messages enable row level security;
 
 do $$
 declare
   policy_row record;
   managed_policy_names text[] := array[
     'Profiles are viewable by everyone',
+    'Users read own profile',
     'Users can update own profile',
     'Users can insert own profile',
     'Admins manage all profiles',
@@ -441,6 +637,7 @@ declare
     'Authenticated users can create a shop',
     'Published products are viewable by everyone',
     'Sellers manage own products',
+    'Admins manage all products',
     'Product images are viewable by everyone',
     'Sellers manage images of own products',
     'Users manage own cart',
@@ -474,7 +671,10 @@ declare
     'Authenticated users can upload product images',
     'Product owners upload images and users upload own avatars',
     'Product owners update their images and avatars',
-    'Users can delete own uploads'
+    'Users can delete own uploads',
+    'Admins manage admin messages',
+    'Recipients read admin messages',
+    'Recipients update admin message read state'
   ];
 begin
   for policy_row in
@@ -492,35 +692,41 @@ begin
   end loop;
 end $$;
 
--- Profiles: public read, owners/admins write
-create policy "Profiles are viewable by everyone" on public.profiles
-  for select using (true);
+-- Profile email addresses are private; public seller details use public_profiles.
+create policy "Users read own profile" on public.profiles
+  for select using (auth.uid() = id);
 create policy "Users can update own profile" on public.profiles
   for update using (auth.uid() = id);
 create policy "Users can insert own profile" on public.profiles
   for insert with check (auth.uid() = id);
 create policy "Admins manage all profiles" on public.profiles
-  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+  using (public.is_marketplace_admin())
+  with check (public.is_marketplace_admin());
 
 -- Categories: public read, admins write
 create policy "Categories are viewable by everyone" on public.categories for select using (true);
 create policy "Admins manage categories" on public.categories
-  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
-  with check (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+  using (public.is_marketplace_admin())
+  with check (public.is_marketplace_admin());
 
 -- Shops: public read; owners manage; authenticated can create
 create policy "Shops are viewable by everyone" on public.shops for select using (true);
 create policy "Shop owners manage own shop" on public.shops
-  using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+  using (auth.uid() = owner_id and public.is_account_approved())
+  with check (auth.uid() = owner_id and public.is_account_approved());
 create policy "Authenticated users can create a shop" on public.shops
-  for insert with check (auth.uid() = owner_id);
+  for insert with check (auth.uid() = owner_id and public.is_account_approved());
 
 
 -- Products: published products viewable by everyone; sellers manage own
 create policy "Published products are viewable by everyone" on public.products
-  for select using (status = 'published');
+  for select using (status = 'published' and moderation_status = 'approved');
 create policy "Sellers manage own products" on public.products
-  using (auth.uid() = seller_id) with check (auth.uid() = seller_id);
+  using (auth.uid() = seller_id and public.is_account_approved())
+  with check (auth.uid() = seller_id and public.is_account_approved());
+create policy "Admins manage all products" on public.products
+  using (public.is_marketplace_admin())
+  with check (public.is_marketplace_admin());
 
 -- Product images: public read; sellers manage images of their products
 create policy "Product images are viewable by everyone" on public.product_images
@@ -529,26 +735,28 @@ create policy "Sellers manage images of own products" on public.product_images
   using (exists (
     select 1 from public.products where products.id = product_images.product_id
       and products.seller_id = auth.uid()
-  ))
+  ) and public.is_account_approved())
   with check (exists (
     select 1 from public.products where products.id = product_images.product_id
       and products.seller_id = auth.uid()
-  ));
+  ) and public.is_account_approved());
 
 -- Carts: users manage own cart
 create policy "Users manage own cart" on public.carts
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  using (auth.uid() = user_id and public.is_account_approved())
+  with check (auth.uid() = user_id and public.is_account_approved());
 create policy "Users manage own cart items" on public.cart_items
   using (exists (
     select 1 from public.carts where carts.id = cart_items.cart_id and carts.user_id = auth.uid()
-  ))
+  ) and public.is_account_approved())
   with check (exists (
     select 1 from public.carts where carts.id = cart_items.cart_id and carts.user_id = auth.uid()
-  ));
+  ) and public.is_account_approved());
 
 -- Favorites: users manage own favorites
 create policy "Users manage own favorites" on public.favorites
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  using (auth.uid() = user_id and public.is_account_approved())
+  with check (auth.uid() = user_id and public.is_account_approved());
 
 
 -- Orders: buyer or a seller of an item in the order; admins all
@@ -562,7 +770,7 @@ create policy "Orders visible to buyer and involved sellers" on public.orders
     or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
   );
 create policy "Buyers can create orders" on public.orders
-  for insert with check (auth.uid() = buyer_id);
+  for insert with check (auth.uid() = buyer_id and public.is_account_approved());
 create policy "Buyers and sellers update own order scope" on public.orders
   for update using (
     auth.uid() = buyer_id
@@ -592,6 +800,7 @@ create policy "Order items insertable with order" on public.order_items
       select 1 from public.orders where orders.id = order_items.order_id
       and orders.buyer_id = auth.uid()
     )
+    and public.is_account_approved()
   );
 
 -- Payments: buyer/seller of the order; admins
@@ -611,6 +820,7 @@ create policy "Reviews are viewable by everyone" on public.reviews for select us
 create policy "Buyers can review verified purchases" on public.reviews
   for insert with check (
     auth.uid() = buyer_id
+    and public.is_account_approved()
     and exists (
       select 1 from public.order_items oi
       join public.orders o on o.id = oi.order_id
@@ -655,29 +865,39 @@ create policy "Sales events are viewable by everyone" on public.sales_events for
 create policy "Sellers read own sales events" on public.sales_events
   for select using (auth.uid() = seller_id);
 create policy "Admins read all sales events" on public.sales_events
-  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+  using (public.is_marketplace_admin());
 
 -- Seller inquiries: buyers insert; shop owners read own; admins all
 create policy "Buyers can send inquiries" on public.seller_inquiries
-  for insert with check (auth.uid() = buyer_id);
+  for insert with check (auth.uid() = buyer_id and public.is_account_approved());
 create policy "Inquiries visible to shop owner and buyer" on public.seller_inquiries
   for select using (
     auth.uid() = buyer_id
     or exists (select 1 from public.shops where shops.id = seller_inquiries.shop_id and shops.owner_id = auth.uid())
-    or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+    or public.is_marketplace_admin()
   );
 
 -- Reports: reporters insert; admins read
-create policy "Users can file reports" on public.reports for insert with check (auth.uid() = reporter_id);
+create policy "Users can file reports" on public.reports
+  for insert with check (auth.uid() = reporter_id and public.is_account_approved());
 create policy "Admins manage reports" on public.reports
-  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
-  with check (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+  using (public.is_marketplace_admin())
+  with check (public.is_marketplace_admin());
 
 -- Messages: anyone can send; admins read all
 create policy "Anyone can send a support message" on public.messages
   for insert with check (true);
 create policy "Admins read support messages" on public.messages for select
-  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+  using (public.is_marketplace_admin());
+
+create policy "Admins manage admin messages" on public.admin_messages
+  for all using (public.is_marketplace_admin())
+  with check (public.is_marketplace_admin() and admin_id = auth.uid());
+create policy "Recipients read admin messages" on public.admin_messages
+  for select using (auth.uid() = recipient_id);
+create policy "Recipients update admin message read state" on public.admin_messages
+  for update using (auth.uid() = recipient_id)
+  with check (auth.uid() = recipient_id);
 
 -- Storage: product-images bucket — public read, authenticated upload
 create policy "Product images are publicly readable" on storage.objects
@@ -694,6 +914,7 @@ create policy "Product owners upload images and users upload own avatars" on sto
           select 1 from public.products p
           where p.id::text = (storage.foldername(name))[2]
             and p.seller_id = auth.uid()
+            and public.is_account_approved()
         )
       )
       or (
@@ -713,6 +934,7 @@ create policy "Product owners update their images and avatars" on storage.object
           select 1 from public.products p
           where p.id::text = (storage.foldername(name))[2]
             and p.seller_id = auth.uid()
+            and public.is_account_approved()
         )
       )
       or (
@@ -730,6 +952,7 @@ create policy "Product owners update their images and avatars" on storage.object
           select 1 from public.products p
           where p.id::text = (storage.foldername(name))[2]
             and p.seller_id = auth.uid()
+            and public.is_account_approved()
         )
       )
       or (
@@ -739,7 +962,25 @@ create policy "Product owners update their images and avatars" on storage.object
     )
   );
 create policy "Users can delete own uploads" on storage.objects
-  for delete using (bucket_id = 'product-images' and auth.uid() = owner);
+  for delete using (
+    bucket_id = 'product-images'
+    and auth.uid() = owner
+    and (
+      (
+        (storage.foldername(name))[1] = 'products'
+        and public.is_account_approved()
+        and exists (
+          select 1 from public.products p
+          where p.id::text = (storage.foldername(name))[2]
+            and p.seller_id = auth.uid()
+        )
+      )
+      or (
+        (storage.foldername(name))[1] = 'avatars'
+        and (storage.foldername(name))[2] = auth.uid()::text
+      )
+    )
+  );
 
 -- ============================================================================
 -- Seed: default categories
@@ -758,8 +999,9 @@ on conflict (slug) do nothing;
 -- ============================================================================
 -- Notes
 -- ============================================================================
--- 1. After running this, designate at least one admin:
---    UPDATE public.profiles SET role = 'admin' WHERE id = '<your auth user id>';
+-- 1. Run `node scripts/bootstrap-admin.js` from the project root to create or
+--    promote an administrator. The script sets both the profile role and the
+--    signed app_metadata claim required by admin RLS; sign in again afterward.
 -- 2. Email confirmations / password-reset emails depend on SMTP settings in your
 --    Supabase project (Authentication > Email Templates).
 -- 3. The 'product-images' bucket is public. Uploads are handled from the browser

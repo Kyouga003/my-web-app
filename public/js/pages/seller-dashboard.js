@@ -4,6 +4,7 @@ import { formatMoney, escapeHtml, showToast } from '/js/ui.js';
 import { renderAuthLinks, updateCartCount, refreshCartCount } from '/js/nav.js';
 
 const onboard = document.getElementById('seller-onboard');
+const pendingPanel = document.getElementById('seller-account-pending');
 const statsEl = document.getElementById('seller-stats');
 const recentEl = document.getElementById('seller-recent-orders');
 const requireAuthEl = document.getElementById('seller-require-auth');
@@ -91,11 +92,12 @@ async function loadRecentOrders() {
 
 window.addEventListener('authstate', async () => {
   const { currentUser } = await import('/js/init.js');
-  const prof = currentUser ? await supabase.from('profiles').select('role,display_name').eq('id', currentUser.id).single() : null;
+  const prof = currentUser ? await supabase.from('profiles').select('role,display_name,approval_status').eq('id', currentUser.id).single() : null;
   renderAuthLinks(currentUser, prof && prof.data);
   if (!currentUser) {
     requireAuthEl.style.display = 'block';
     onboard.style.display = 'none';
+    pendingPanel.style.display = 'none';
     showSellerWorkspace(false);
     updateCartCount(0);
     return;
@@ -108,6 +110,19 @@ window.addEventListener('authstate', async () => {
     window.location.replace('admin.html');
     return;
   }
+
+  const approvalStatus = prof && prof.data ? prof.data.approval_status : 'pending';
+  if (approvalStatus !== 'approved') {
+    requireAuthEl.style.display = 'none';
+    onboard.style.display = 'none';
+    showSellerWorkspace(false);
+    pendingPanel.style.display = 'block';
+    document.getElementById('seller-account-pending-copy').textContent = approvalStatus === 'rejected'
+      ? 'Your account was not approved. Contact support if you believe this is an error.'
+      : 'Your account needs approval before you can open a shop or place marketplace orders.';
+    return;
+  }
+  pendingPanel.style.display = 'none';
 
   const onboardForm = document.getElementById('onboard-form');
   if (role === 'buyer') {

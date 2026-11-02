@@ -60,9 +60,13 @@ window.addEventListener('authstate', async () => {
     return;
   }
   if (!prof || !prof.data || prof.data.role !== 'seller') {
-    requireAuthEl.innerHTML = prof?.data?.role === 'admin'
-      ? '<h2>Administrator workspace</h2><p>Product moderation and platform controls belong in administration.</p><div class="seller-entry-actions"><a class="btn btn-primary" href="admin.html">Open administration</a></div>'
-      : '<h2>Open a shop before listing products</h2><p>Create your maker account and shop to add products, inventory, and photos.</p><div class="seller-entry-actions"><a class="btn btn-primary" href="seller-dashboard.html">Start seller setup</a><a class="btn btn-outline" href="register.html?next=seller-dashboard.html">Create an account</a></div>';
+    if (prof?.data?.role === 'admin') {
+      requireAuthEl.innerHTML = '<h2>Administrator workspace</h2><p>Product moderation and platform controls belong in administration.</p><div class="seller-entry-actions"><a class="btn btn-primary" href="admin.html">Open administration</a></div>';
+    } else if (prof?.data?.approval_status && prof.data.approval_status !== 'approved') {
+      requireAuthEl.innerHTML = '<h2>Account review in progress</h2><p>Your account must be approved before you can open a shop or add listings.</p><div class="seller-entry-actions"><a class="btn btn-outline" href="profile.html">View your account</a></div>';
+    } else {
+      requireAuthEl.innerHTML = '<h2>Open a shop before listing products</h2><p>Create your maker account and shop to add products, inventory, and photos.</p><div class="seller-entry-actions"><a class="btn btn-primary" href="seller-dashboard.html">Start seller setup</a><a class="btn btn-outline" href="register.html?next=seller-dashboard.html">Create an account</a></div>';
+    }
     requireAuthEl.style.display = 'block';
     wrap.style.display = 'none';
     updateCartCount(0);
@@ -122,7 +126,7 @@ function renderProductsTable(rows) {
   wrap.style.display = 'block';
   tableWrap.style.display = '';
   emptyEl.style.display = 'none';
-  let html = '<table><thead><tr><th>Image</th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>Image</th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Review</th><th>Actions</th></tr></thead><tbody>';
   rows.forEach((p) => {
     const imgs = p.product_images || [];
     const main = imgs.find((i) => i.is_main) || imgs[0];
@@ -137,6 +141,7 @@ function renderProductsTable(rows) {
         <td>' + formatMoney(p.price_cents, p.currency) + '</td>\
         <td class="product-stock ' + stockClass + '">' + stockLabel + '</td>\
         <td><span class="badge ' + (p.status === 'published' ? 'badge-success' : 'badge-draft') + '">' + escapeHtml(p.status) + '</span></td>\
+        <td><span class="badge ' + (p.moderation_status === 'approved' ? 'badge-success' : p.moderation_status === 'rejected' ? 'badge-draft' : 'badge-outline') + '">' + escapeHtml(p.moderation_status || 'approved') + '</span></td>\
         <td>\
           <button class="btn-ghost btn-sm" onclick="editProduct(\'' + p.id + '\')" title="Edit details">Edit</button>\
           <button class="btn-ghost btn-sm" onclick="togglePublish(\'' + p.id + '\', \'' + (p.status === 'published' ? 'draft' : 'published') + '\')" title="' + (p.status === 'published' ? 'Unpublish' : 'Publish') + '">' + (p.status === 'published' ? 'Unpublish' : 'Publish') + '</button>\

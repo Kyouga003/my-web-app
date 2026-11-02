@@ -40,6 +40,9 @@ window.addEventListener('authstate', async () => {
   document.getElementById('profile-email').value = p.email || currentUser.email || '';
   document.getElementById('profile-bio').value = p.bio || '';
   document.getElementById('profile-role').textContent = (p.role || 'buyer') + (p.role === 'seller' ? ' (seller)' : '') + (p.role === 'admin' ? ' (administrator)' : '');
+  const approvalStatus = document.getElementById('profile-approval-status');
+  approvalStatus.textContent = p.approval_status || 'pending';
+  approvalStatus.className = 'badge ' + (p.approval_status === 'approved' ? 'badge-success' : 'badge-outline');
   document.getElementById('stat-member').textContent = p.created_at ? new Date(p.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : '–';
   const avatar = document.getElementById('profile-avatar');
   avatar.src = p.avatar_url || '/images/placeholder.svg';
@@ -50,6 +53,50 @@ window.addEventListener('authstate', async () => {
     const { data: favs } = await supabase.from('favorites').select('id').eq('user_id', currentUser.id);
     document.getElementById('stat-favorites').textContent = (favs || []).length;
   } catch (_) {}
+  loadAdminMessages();
+});
+
+async function loadAdminMessages() {
+  const list = document.getElementById('admin-messages-list');
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch('/api/account/admin-messages', {
+      headers: { Authorization: 'Bearer ' + session.access_token }
+    });
+    const messages = await response.json();
+    if (!response.ok) throw new Error(messages.error || 'Unable to load messages');
+    if (!messages.length) {
+      list.innerHTML = '<div class="empty-state"><p>No messages from administration.</p></div>';
+      return;
+    }
+    list.innerHTML = messages.map(message => `
+      <article class="admin-queue-card">
+        <div class="admin-queue-head"><h4>${escapeHtml(message.subject)}</h4><span class="admin-queue-meta">${new Date(message.created_at).toLocaleString()}</span></div>
+        <p class="admin-message-body">${escapeHtml(message.body)}</p>
+        ${message.read_at ? '<span class="badge badge-success">Read</span>' : '<button class="btn btn-sm btn-ghost" data-message-read="' + message.id + '">Mark as read</button>'}
+      </article>
+    `).join('');
+  } catch (error) {
+    list.innerHTML = '<p class="text-secondary">' + escapeHtml(error.message) + '</p>';
+  }
+}
+
+document.getElementById('admin-messages-list').addEventListener('click', async event => {
+  const button = event.target.closest('[data-message-read]');
+  if (!button) return;
+  button.disabled = true;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch('/api/account/admin-messages/' + encodeURIComponent(button.dataset.messageRead) + '/read', {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + session.access_token }
+    });
+    if (!response.ok) throw new Error('Unable to update message');
+    await loadAdminMessages();
+  } catch (error) {
+    button.disabled = false;
+    showToast(error.message, 'error');
+  }
 });
 
 form.addEventListener('submit', async (e) => {
