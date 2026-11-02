@@ -101,7 +101,7 @@ ul, ol { margin: 0 0 1rem 1.25rem; }
   padding-right: 1.25rem;
 }
 
-.section { padding: var(--spacing-lg) 0; }
+.section { padding-block: var(--spacing-lg); }
 /* Header & navigation */
 .site-header {
   position: sticky;
@@ -624,16 +624,34 @@ input[type="checkbox"] { accent-color: var(--brand-purple); }
 }
 
 /* Setup banner */
-.setup-banner {
+#setup-banner {
+  width: 100%;
+  max-width: var(--container);
   background: #FFFBEB;
   border: 1px solid #F2E8B2;
   color: #7A6418;
   padding: 1rem 1.25rem;
   border-radius: var(--radius);
-  margin-bottom: 1.25rem;
+  margin: 1rem auto 1.25rem;
   font-size: 0.9rem;
+  overflow-wrap: anywhere;
 }
-.setup-banner code { background: #EDE7D6; padding: 0.15rem 0.4rem; border-radius: 4px; font-family: monospace; font-size: 0.85rem; }
+#setup-banner code { background: #EDE7D6; padding: 0.15rem 0.4rem; border-radius: 4px; font-family: monospace; font-size: 0.85rem; }
+
+.seller-entry {
+  max-width: 680px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: var(--warm-cream);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--brand-purple);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.seller-entry h2 { margin-bottom: 0.5rem; }
+.seller-entry p { color: var(--text-secondary); }
+.seller-entry-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 
 /* Footer */
 .site-footer {
@@ -670,6 +688,7 @@ input[type="checkbox"] { accent-color: var(--brand-purple); }
   .hero-actions .btn { width: 100%; }
   .modal { margin: 1rem; width: auto; }
   .toast { min-width: auto; width: 90vw; left: 5vw; right: 5vw; }
+  .seller-entry { padding: 1.25rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

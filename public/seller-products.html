@@ -18,8 +18,13 @@
 <div id="setup-banner"></div>
 <div class="container section">
   <h2>Your products</h2>
-  <div id="seller-products-require-auth" style="display:none; text-align:center; padding: 2rem">
-    <p><a href="login.html?next=seller-products.html">Sign in</a> to manage your products.</p>
+  <div id="seller-products-require-auth" class="seller-entry" style="display:none">
+    <h2>Sign in to manage your listings</h2>
+    <p>Open your maker workspace to add products, inventory, and photos.</p>
+    <div class="seller-entry-actions">
+      <a href="login.html?next=seller-products.html" class="btn btn-primary">Sign in</a>
+      <a href="register.html?next=seller-dashboard.html" class="btn btn-outline">Create an account</a>
+    </div>
   </div>
   <div id="seller-products-wrap" style="display:none">
     <a href="#" id="btn-add-product" class="btn btn-primary" style="margin-bottom:1rem">+ Add a product</a>

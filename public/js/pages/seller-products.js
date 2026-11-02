@@ -61,8 +61,8 @@ window.addEventListener('authstate', async () => {
   }
   if (!prof || !prof.data || prof.data.role !== 'seller') {
     requireAuthEl.innerHTML = prof?.data?.role === 'admin'
-      ? '<p>Product management is in the seller workspace. <a href="admin.html">Open administration</a>.</p>'
-      : '<p>Open a shop before managing products. <a href="seller-dashboard.html">Start seller setup</a>.</p>';
+      ? '<h2>Administrator workspace</h2><p>Product moderation and platform controls belong in administration.</p><div class="seller-entry-actions"><a class="btn btn-primary" href="admin.html">Open administration</a></div>'
+      : '<h2>Open a shop before listing products</h2><p>Create your maker account and shop to add products, inventory, and photos.</p><div class="seller-entry-actions"><a class="btn btn-primary" href="seller-dashboard.html">Start seller setup</a><a class="btn btn-outline" href="register.html?next=seller-dashboard.html">Create an account</a></div>';
     requireAuthEl.style.display = 'block';
     wrap.style.display = 'none';
     updateCartCount(0);

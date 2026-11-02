@@ -47,6 +47,7 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
@@ -138,6 +139,21 @@ create table if not exists public.products (
   tags text[] default '{}' not null,
   published_at timestamptz,
   created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+-- 5. Product images (stored in Supabase Storage bucket 'product-images')
+create table if not exists public.product_images (
+  id uuid default gen_random_uuid() primary key,
+  product_id uuid references public.products(id) on delete cascade not null,
+  storage_path text not null,
+  url text not null,
+  is_main boolean default false not null,
+  sort_order integer default 0 not null,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
 -- 6. Carts & cart items
 create table if not exists public.carts (
   id uuid default gen_random_uuid() primary key,
@@ -348,6 +364,7 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists trg_guard_quantity on public.products;
 create trigger trg_guard_quantity
 before update of quantity on public.products
 for each row execute function public.guard_non_negative_quantity();
@@ -356,18 +373,25 @@ for each row execute function public.guard_non_negative_quantity();
 -- Realtime publication for the live sales feed
 -- ============================================================================
 do $$
+declare table_name text;
 begin
   if not exists (
     select 1 from pg_publication where pubname = 'supabase_realtime'
   ) then
     create publication supabase_realtime;
   end if;
-end $$;
 
-alter publication supabase_realtime add table public.sales_events;
-alter publication supabase_realtime add table public.orders;
-alter publication supabase_realtime add table public.products;
-alter publication supabase_realtime add table public.notifications;
+  foreach table_name in array array['sales_events', 'orders', 'products', 'notifications'] loop
+    if not exists (
+      select 1 from pg_publication_tables p
+      where p.pubname = 'supabase_realtime'
+        and p.schemaname = 'public'
+        and p.tablename = table_name
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', table_name);
+    end if;
+  end loop;
+end $$;
 
 -- ============================================================================
 -- Storage bucket for product images (public bucket)
@@ -380,18 +404,6 @@ update storage.buckets
 set file_size_limit = 4194304,
     allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp']
 where id = 'product-images';
-
--- 5. Product images (stored in Supabase Storage bucket 'product-images')
-create table if not exists public.product_images (
-  id uuid default gen_random_uuid() primary key,
-  product_id uuid references public.products(id) on delete cascade not null,
-  storage_path text not null,
-  url text not null,
-  is_main boolean default false not null,
-  sort_order integer default 0 not null,
-  created_at timestamptz default now() not null
-);
-
 
 -- ============================================================================
 -- Row Level Security
@@ -413,6 +425,72 @@ alter table public.sales_events enable row level security;
 alter table public.seller_inquiries enable row level security;
 alter table public.reports enable row level security;
 alter table public.messages enable row level security;
+
+do $$
+declare
+  policy_row record;
+  managed_policy_names text[] := array[
+    'Profiles are viewable by everyone',
+    'Users can update own profile',
+    'Users can insert own profile',
+    'Admins manage all profiles',
+    'Categories are viewable by everyone',
+    'Admins manage categories',
+    'Shops are viewable by everyone',
+    'Shop owners manage own shop',
+    'Authenticated users can create a shop',
+    'Published products are viewable by everyone',
+    'Sellers manage own products',
+    'Product images are viewable by everyone',
+    'Sellers manage images of own products',
+    'Users manage own cart',
+    'Users manage own cart items',
+    'Users manage own favorites',
+    'Orders visible to buyer and involved sellers',
+    'Buyers can create orders',
+    'Buyers and sellers update own order scope',
+    'Order items visible to buyer and involved sellers',
+    'Order items insertable with order',
+    'Payments visible to order parties',
+    'Reviews are viewable by everyone',
+    'Buyers can review verified purchases',
+    'Review owners update own review',
+    'App can add notifications',
+    'App can add sales events',
+    'App can add product images',
+    'App can add payment rows',
+    'Sellers respond to reviews of their products',
+    'Users read own notifications',
+    'Sales events are viewable by everyone',
+    'Sellers read own sales events',
+    'Admins read all sales events',
+    'Buyers can send inquiries',
+    'Inquiries visible to shop owner and buyer',
+    'Users can file reports',
+    'Admins manage reports',
+    'Anyone can send a support message',
+    'Admins read support messages',
+    'Product images are publicly readable',
+    'Authenticated users can upload product images',
+    'Product owners upload images and users upload own avatars',
+    'Product owners update their images and avatars',
+    'Users can delete own uploads'
+  ];
+begin
+  for policy_row in
+    select schemaname, tablename, policyname
+    from pg_policies
+    where policyname = any (managed_policy_names)
+      and (schemaname = 'public' or (schemaname = 'storage' and tablename = 'objects'))
+  loop
+    execute format(
+      'drop policy %I on %I.%I',
+      policy_row.policyname,
+      policy_row.schemaname,
+      policy_row.tablename
+    );
+  end loop;
+end $$;
 
 -- Profiles: public read, owners/admins write
 create policy "Profiles are viewable by everyone" on public.profiles

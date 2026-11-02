@@ -1,10 +1,15 @@
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const supabaseBrowserSdk = fs.readFileSync(path.join(
+  __dirname, 'node_modules', '@supabase', 'supabase-js', 'dist', 'umd', 'supabase.js'
+), 'utf8');
 
 // Supabase server client (anon key). User-scoped operations forward the
 // caller's JWT so Row Level Security sees the real authenticated user.
@@ -27,6 +32,7 @@ app.use((_req, res, next) => {
 app.get('/js/config.js', (_req, res) => {
   res.type('application/javascript');
   res.send(
+    supabaseBrowserSdk + '\n' +
     'window.SUPABASE_CONFIG = {\n' +
     '  url: ' + JSON.stringify(process.env.SUPABASE_URL) + ',\n' +
     '  key: ' + JSON.stringify(process.env.SUPABASE_KEY) + '\n' +

@@ -3,6 +3,21 @@
 
 import { supabase } from '/js/init.js';
 import { showToast, showError, clearErrors } from '/js/ui.js';
+import { renderAuthLinks, refreshCartCount } from '/js/nav.js';
+
+function safeNextPage() {
+  const requested = new URLSearchParams(window.location.search).get('next') || '';
+  return /^[a-z0-9-]+\.html$/i.test(requested) ? requested : null;
+}
+
+window.addEventListener('authstate', async () => {
+  const { currentUser } = await import('/js/init.js');
+  const profile = currentUser
+    ? await supabase.from('profiles').select('role, display_name').eq('id', currentUser.id).maybeSingle()
+    : null;
+  renderAuthLinks(currentUser, profile && profile.data);
+  refreshCartCount();
+});
 
 export async function setupLogin(form, defaultRedirect) {
   form.addEventListener('submit', async (e) => {
@@ -15,14 +30,14 @@ export async function setupLogin(form, defaultRedirect) {
     }
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
-    submit.textContent = 'Signing in…';
+    submit.textContent = 'Signing inï¿½';
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     submit.disabled = false;
     submit.textContent = 'Sign in';
     if (error) {
       return showError(form, 'login-email', error.message || 'Sign in failed. Please try again.');
     }
-    const next = new URLSearchParams(window.location.search).get('next') || defaultRedirect || 'index.html';
+    const next = safeNextPage() || defaultRedirect || 'index.html';
     showToast('Welcome back!');
     window.location.href = next;
   });
@@ -47,7 +62,7 @@ export async function setupRegister(form) {
     }
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
-    submit.textContent = 'Creating account…';
+    submit.textContent = 'Creating accountï¿½';
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -59,7 +74,8 @@ export async function setupRegister(form) {
       return showError(form, 'reg-email', error.message || 'Could not create account. Please try again.');
     }
     showToast('Account created! Check your email to confirm your address, then sign in.');
-    window.location.href = 'login.html';
+    const next = safeNextPage();
+    window.location.href = next ? 'login.html?next=' + encodeURIComponent(next) : 'login.html';
   });
 }
 
@@ -73,7 +89,7 @@ export async function setupReset(form) {
     }
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
-    submit.textContent = 'Sending…';
+    submit.textContent = 'Sendingï¿½';
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     submit.disabled = false;
     submit.textContent = 'Send reset link';
