@@ -42,7 +42,7 @@ async function loadShop() {
   }
   const shop = data;
   contentEl.style.display = 'block';
-  document.title = escapeHtml(shop.name) + ' — Handmade & Co.';
+  document.title = escapeHtml(shop.name) + ' — YouMadeIt';
   document.getElementById('shop-name').textContent = shop.name;
   document.getElementById('shop-seller').textContent = shop.profiles?.display_name || 'A maker';
   document.getElementById('shop-desc').textContent = shop.description || 'No introduction yet.';

@@ -92,7 +92,7 @@ window.shipOrder = async (orderId) => {
   const { data: order } = await supabase.from('orders').select('*, buyer_id').eq('id', orderId).single();
   if (!order) return;
   document.getElementById('ship-order-id').value = orderId;
-  document.getElementById('ship-seller').value = 'Handmade & Co. staff';
+  document.getElementById('ship-seller').value = 'YouMadeIt staff';
   document.getElementById('ship-tracking').value = order.tracking_number || '';
   document.getElementById('ship-form').dataset.orderId = orderId;
   document.getElementById('ship-modal').style.display = 'flex';
@@ -118,7 +118,7 @@ window.shipOrder = async (orderId) => {
   const { data: order } = await supabase.from('orders').select('*, buyer_id').eq('id', orderId).single();
   if (!order) return;
   document.getElementById('ship-order-id').value = orderId;
-  document.getElementById('ship-seller').value = 'Handmade & Co. staff';
+  document.getElementById('ship-seller').value = 'YouMadeIt staff';
   document.getElementById('ship-tracking').value = order.tracking_number || '';
   document.getElementById('ship-form').dataset.orderId = orderId;
   document.getElementById('ship-modal').style.display = 'flex';

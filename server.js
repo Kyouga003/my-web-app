@@ -299,7 +299,7 @@ app.patch('/api/products/:id', requireUser, requireApproved, async (req, res) =>
     updates.published_at = new Date().toISOString();
   }
   const contentChanged = Object.keys(updates).some(field => field !== 'status');
-  if (contentChanged || updates.status === 'published') {
+  if (contentChanged) {
     updates.moderation_status = 'pending';
     updates.moderation_note = null;
     updates.reviewed_at = null;

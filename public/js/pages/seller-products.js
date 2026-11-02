@@ -375,9 +375,13 @@ window.editProduct = async (id) => {
 
 window.togglePublish = async (id, toStatus) => {
   if (!confirm('Change this product to "' + toStatus + '"?')) return;
-  const { error } = await fetchJson('/api/products/' + id, { status: toStatus }, 'PATCH');
+  const { data, error } = await fetchJson('/api/products/' + id, { status: toStatus }, 'PATCH');
   if (error) return alert('Failed: ' + error);
-  showToast('Product ' + toStatus + '.');
+  if (toStatus === 'published' && data.moderation_status === 'pending') {
+    showToast('Submitted for review. The listing becomes visible after admin approval.');
+  } else {
+    showToast('Product ' + toStatus + '.');
+  }
   loadProducts();
 };
 

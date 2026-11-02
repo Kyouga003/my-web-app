@@ -102,7 +102,7 @@ export function renderHeader({ currentPage: page } = {}) {
     '<div class="header-inner">' +
     '<a href="index.html" class="brand">' +
     '<span class="brand-mark" aria-hidden="true">&#10027;</span>' +
-    '<span>Handmade &amp; Co.</span>' +
+    '<span>YouMadeIt</span>' +
     '</a>' +
     '<ul class="nav-list" aria-label="Main navigation"></ul>' +
     '<div class="nav-actions">' +
