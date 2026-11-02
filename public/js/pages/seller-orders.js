@@ -1,4 +1,4 @@
-// Seller order management — sellers see only their own order items.
+// Seller order management ï¿½ sellers see only their own order items.
 import { supabase } from '/js/init.js';
 import { formatMoney, formatDateTime, escapeHtml, showToast, openModal, closeModal } from '/js/ui.js';
 import { renderAuthLinks, updateCartCount } from '/js/nav.js';
@@ -65,11 +65,11 @@ async function loadOrders() {
     rows.forEach((o) => {
       const mine = (o.order_items || []).filter((oi) => oi.seller_id === me.id);
       const canShip = o.status === 'paid' || o.status === 'processing';
-      const buyer = (o.shipping_address && o.shipping_address.name) ? escapeHtml(o.shipping_address.name) : '—';
+      const buyer = (o.shipping_address && o.shipping_address.name) ? escapeHtml(o.shipping_address.name) : 'ï¿½';
       html += '\
         <tr>\
           <td style="font-weight:600">#' + escapeHtml(o.order_number) + '</td>\
-          <td>' + (mine.map((oi) => oi.product_name_snapshot + ' &#215;' + oi.quantity).join('<br>') || '—') + '</td>\
+          <td>' + (mine.map((oi) => oi.product_name_snapshot + ' &#215;' + oi.quantity).join('<br>') || 'ï¿½') + '</td>\
           <td>' + mine.reduce((s, oi) => s + oi.quantity, 0) + '</td>\
           <td>' + buyer + '</td>\
           <td>' + escapeHtml(o.delivery_method || 'standard') + '</td>\
@@ -98,7 +98,7 @@ window.shipOrder = async (orderId) => {
   const { data: order } = await supabase.from('orders').select('*, buyer_id').eq('id', orderId).single();
   if (!order) return;
   document.getElementById('ship-order-id').value = orderId;
-  document.getElementById('ship-seller').value = 'Handmade & Co.';
+  document.getElementById('ship-seller').value = 'YouMadeIt';
   document.getElementById('ship-tracking').value = order.tracking_number || '';
   document.getElementById('ship-form').dataset.orderId = orderId;
   openModal(shipModal);

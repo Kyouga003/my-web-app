@@ -1,4 +1,4 @@
-// Shared header/navigation — rendered on every page.
+// Shared header/navigation ï¿½ rendered on every page.
 // Follows the existing CSS: .site-header, .nav-list, .cart-badge, .cart-count,
 // .auth-menu, .menu-btn, .dropdown, .mobile-menu-btn, .mobile-menu.
 
@@ -102,7 +102,7 @@ export function renderHeader({ currentPage: page } = {}) {
     '<div class="header-inner">' +
     '<a href="index.html" class="brand">' +
     '<span class="brand-mark" aria-hidden="true">&#10027;</span>' +
-    '<span>Handmade &amp; Co.</span>' +
+    '<span>YouMadeIt</span>' +
     '</a>' +
     '<ul class="nav-list" aria-label="Main navigation"></ul>' +
     '<div class="nav-actions">' +

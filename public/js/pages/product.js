@@ -53,7 +53,7 @@ async function loadProduct() {
     return;
   }
   const p = data;
-  document.title = escapeHtml(p.name) + ' — Handmade & Co.';
+  document.title = escapeHtml(p.name) + ' — YouMadeIt';
   document.getElementById('product-name').textContent = p.name;
   document.getElementById('product-description').textContent = p.description || 'No description provided.';
   document.getElementById('product-price').textContent = formatMoney(p.price_cents, p.currency);
