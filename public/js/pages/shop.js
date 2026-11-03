@@ -95,25 +95,29 @@ function productCard(p) {
   const main = imgs.find(i => i.is_main && i.url) || imgs.find(i => i.url) || {};
   const imgUrl = main.url || '/images/placeholder.svg';
   const stock = p.quantity == null ? 0 : p.quantity;
-  const stockLabel = stock <= 0 ? 'Sold out' : stock === 1 ? 'Only 1 left' : stock >= 10 ? 'In stock' : stock + ' left';
-  const stockClass = stock <= 0 ? 'out' : stock <= 2 ? 'low' : 'ok';
   return `
     <article class="product-card">
       <div class="product-card-media">
-        <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.name || '')}" loading="lazy" onerror="this.src='/images/placeholder.svg'">
-        <span class="badge badge-outline">${escapeHtml(stock <= 0 ? 'Sold out' : 'Available')}</span>
-        <button class="fav-btn" data-product-id="${p.id}" aria-label="Favorite"><svg class="fav-fill" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+        <a href="product.html?id=${p.id}">
+          <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.name || '')}" loading="lazy" onerror="this.src='/images/placeholder.svg'">
+        </a>
+        ${stock <= 0 ? '<span class="product-badge soldout">Sold out</span>' : ''}
+        <button class="fav-btn" data-product-id="${p.id}" aria-label="Add to favorites">
+          <svg class="fav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
       </div>
-      <div class="product-card-info">
-        <div class="product-cat">${escapeHtml(p.categories?.name || 'Handmade')}</div>
-        <h3><a href="product.html?id=${p.id}">${escapeHtml(p.name)}</a></h3>
-        <div class="product-seller">by ${escapeHtml(p.shops?.name || 'a maker')}</div>
-        <div class="product-price">${formatMoney(p.price_cents, p.currency)}</div>
-        <div class="product-stock ${stockClass}">${stockLabel}</div>
-      </div>
-      <div class="product-card-footer">
-        <a href="product.html?id=${p.id}" class="btn btn-sm btn-ghost">View</a>
-        ${stock > 0 ? '<a href="cart.html?add=' + p.id + '" class="btn btn-sm btn-primary">Add to cart</a>' : ''}
+      <div class="product-card-content">
+        <div class="product-card-top">
+          <span class="product-category">${escapeHtml(p.categories?.name || 'Handmade')}</span>
+        </div>
+        <h3 class="product-card-title"><a href="product.html?id=${p.id}">${escapeHtml(p.name)}</a></h3>
+        <p class="product-card-seller">by ${escapeHtml(p.shops?.name || 'Artisan')}</p>
+        <div class="product-card-bottom">
+          <div class="product-price">${formatMoney(p.price_cents, p.currency)}</div>
+          ${stock > 0 ? `<a href="product.html?id=${p.id}" class="product-card-link">View</a>` : ''}
+        </div>
       </div>
     </article>
   `;
@@ -186,8 +190,9 @@ function renderPagination(total) {
 
 function wireFavButtons() {
   document.querySelectorAll('.fav-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.preventDefault(); e.stopPropagation();
+    btn.onclick = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       const id = btn.dataset.productId;
       const { currentUser } = await import('/js/init.js');
       if (!currentUser) { window.location.href = 'login.html'; return; }
@@ -199,7 +204,7 @@ function wireFavButtons() {
         await supabase.from('favorites').insert([{ product_id: id }]);
         btn.classList.add('active');
       }
-    });
+    };
   });
 }
 

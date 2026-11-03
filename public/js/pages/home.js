@@ -99,7 +99,7 @@ async function loadCategories() {
 
 function wireFavButtons() {
   document.querySelectorAll('.fav-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+    btn.onclick = async (e) => {
       e.preventDefault();
       e.stopPropagation();
       const id = btn.dataset.productId;
@@ -113,7 +113,7 @@ function wireFavButtons() {
         await supabase.from('favorites').insert([{ product_id: id }]);
         btn.classList.add('active');
       }
-    });
+    };
   });
 }
 
