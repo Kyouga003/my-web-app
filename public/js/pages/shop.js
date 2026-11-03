@@ -91,7 +91,8 @@ function renderFilters() {
 }
 
 function productCard(p) {
-  const main = (p.product_images && p.product_images[0]) || {};
+  const imgs = p.product_images || [];
+  const main = imgs.find(i => i.is_main) || imgs[0] || {};
   const imgUrl = main.url || '/images/placeholder.svg';
   const stock = p.quantity == null ? 0 : p.quantity;
   const stockLabel = stock <= 0 ? 'Sold out' : stock === 1 ? 'Only 1 left' : stock + ' available';
@@ -99,15 +100,15 @@ function productCard(p) {
   return `
     <article class="product-card">
       <div class="product-card-media">
-        <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.name || '')}" loading="lazy">
+        <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.name || '')}" loading="lazy" onerror="this.src='/images/placeholder.svg'">
         <span class="badge badge-outline">${escapeHtml(stock <= 0 ? 'Sold out' : 'Available')}</span>
         <button class="fav-btn" data-product-id="${p.id}" aria-label="Favorite"><svg class="fav-fill" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
       </div>
       <div class="product-card-info">
-        <div class="product-cat">${escapeHtml(p.category_name || 'Handmade')}</div>
+        <div class="product-cat">${escapeHtml(p.categories?.name || p.category_name || 'Handmade')}</div>
         <h3><a href="product.html?id=${p.id}">${escapeHtml(p.name)}</a></h3>
         <div class="product-price">${formatMoney(p.price_cents, p.currency)}</div>
-        <div class="product-seller">by <a href="seller-shop.html?slug=${escapeHtml(p.shop_slug || '')}">${escapeHtml(p.seller_name || 'a maker')}</a></div>
+        <div class="product-seller">by <a href="seller-shop.html?slug=${escapeHtml(p.shops?.slug || p.shop_slug || '')}">${escapeHtml(p.shops?.name || p.seller_name || 'a maker')}</a></div>
         <div class="product-stock ${stockClass}">${stockLabel}</div>
       </div>
       <div class="product-card-footer">
@@ -125,7 +126,7 @@ async function loadProducts() {
   try {
     let query = supabase
       .from('products')
-      .select('*, product_images(url, is_main), categories(name), shops(name, slug), profiles:public_profiles(display_name)', { count: 'exact' })
+      .select('*, product_images(*), categories(name), shops(name, slug), profiles:public_profiles(display_name)', { count: 'exact' })
       .eq('status', 'published');
     if (state.q) {
       query = query.or('name.ilike.%' + state.q + '%', 'description.ilike.%' + state.q + '%', 'tags.cs.{"' + state.q + '"}');

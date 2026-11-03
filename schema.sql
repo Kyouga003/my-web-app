@@ -751,7 +751,7 @@ create policy "Authenticated users can create a shop" on public.shops
 
 -- Products: published products viewable by everyone; sellers manage own
 create policy "Published products are viewable by everyone" on public.products
-  for select using (status = 'published' and moderation_status = 'approved');
+  for select using (status = 'published');
 create policy "Sellers manage own products" on public.products
   using (auth.uid() = seller_id and public.is_account_approved())
   with check (auth.uid() = seller_id and public.is_account_approved());
