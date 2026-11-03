@@ -27,7 +27,7 @@ function productCard(p) {
   const main = imgs.find(i => i.is_main && i.url) || imgs.find(i => i.url) || {};
   const imgUrl = main.url || '/images/placeholder.svg';
   const stock = p.quantity == null ? 0 : p.quantity;
-  const stockLabel = stock <= 0 ? 'Sold out' : stock === 1 ? 'Only 1 left' : stock + ' available';
+  const stockLabel = stock <= 0 ? 'Sold out' : stock === 1 ? 'Only 1 left' : stock >= 10 ? 'In stock' : stock + ' left';
   const stockClass = stock <= 0 ? 'out' : stock <= 2 ? 'low' : 'ok';
   return `
     <article class="product-card">
@@ -39,8 +39,8 @@ function productCard(p) {
       <div class="product-card-info">
         <div class="product-cat">${escapeHtml(p.categories?.name || 'Handmade')}</div>
         <h3><a href="product.html?id=${p.id}">${escapeHtml(p.name)}</a></h3>
+        <div class="product-seller">Handmade</div>
         <div class="product-price">${formatMoney(p.price_cents, p.currency)}</div>
-        <div class="product-seller">by a maker</div>
         <div class="product-stock ${stockClass}">${stockLabel}</div>
       </div>
       <div class="product-card-footer">
