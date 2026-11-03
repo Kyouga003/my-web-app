@@ -27,25 +27,27 @@ function productCard(p) {
   const main = imgs.find(i => i.is_main && i.url) || imgs.find(i => i.url) || {};
   const imgUrl = main.url || '/images/placeholder.svg';
   const stock = p.quantity == null ? 0 : p.quantity;
-  const stockLabel = stock <= 0 ? 'Sold out' : stock === 1 ? 'Only 1 left' : stock >= 10 ? 'In stock' : stock + ' left';
-  const stockClass = stock <= 0 ? 'out' : stock <= 2 ? 'low' : 'ok';
   return `
     <article class="product-card">
       <div class="product-card-media">
-        <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.name || '')}" loading="lazy" onerror="this.src='/images/placeholder.svg'">
-        <span class="badge badge-outline">${escapeHtml(stock <= 0 ? 'Sold out' : 'Available')}</span>
-        <button class="fav-btn" data-product-id="${p.id}" aria-label="Favorite"><svg class="fav-fill" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+        <a href="product.html?id=${p.id}">
+          <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.name || '')}" loading="lazy" onerror="this.src='/images/placeholder.svg'">
+        </a>
+        ${stock <= 0 ? '<span class="product-badge soldout">Sold Out</span>' : ''}
+        <button class="fav-btn" data-product-id="${p.id}" aria-label="Add to favorites">
+          <svg class="fav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
       </div>
-      <div class="product-card-info">
-        <div class="product-cat">${escapeHtml(p.categories?.name || 'Handmade')}</div>
-        <h3><a href="product.html?id=${p.id}">${escapeHtml(p.name)}</a></h3>
-        <div class="product-seller">Handmade</div>
-        <div class="product-price">${formatMoney(p.price_cents, p.currency)}</div>
-        <div class="product-stock ${stockClass}">${stockLabel}</div>
-      </div>
-      <div class="product-card-footer">
-        <a href="product.html?id=${p.id}" class="btn btn-sm btn-ghost">View</a>
-        <a href="shop.html" class="btn btn-sm btn-outline">Shop</a>
+      <div class="product-card-content">
+        <span class="product-category">${escapeHtml(p.categories?.name || 'Handmade')}</span>
+        <h3 class="product-card-title"><a href="product.html?id=${p.id}">${escapeHtml(p.name)}</a></h3>
+        <p class="product-card-seller">Handcrafted</p>
+        <div class="product-card-bottom">
+          <div class="product-price">${formatMoney(p.price_cents, p.currency)}</div>
+          ${stock > 0 ? `<a href="product.html?id=${p.id}" class="product-card-link">View Details →</a>` : `<span class="product-stock">Out of Stock</span>`}
+        </div>
       </div>
     </article>
   `;
@@ -63,7 +65,7 @@ async function loadFeatured() {
     if (error) throw error;
     const rows = data || [];
     if (rows.length === 0) {
-      featuredGrid.innerHTML = '<div class="empty-state"><h2>No listings yet</h2><p>The marketplace is waiting for its first products. <a href="seller-dashboard.html" class="btn btn-primary">Start selling</a></p></div>';
+      featuredGrid.innerHTML = '<div class="empty-state"><h2>No listings yet</h2><p>Be the first to share your handmade creations.</p><a href="seller-dashboard.html" class="btn btn-primary" style="margin-top:1rem">Start Selling</a></div>';
     } else {
       featuredGrid.innerHTML = rows.map(productCard).join('');
       wireFavButtons();
@@ -80,15 +82,18 @@ async function loadCategories() {
     if (error) throw error;
     const rows = data || [];
     if (rows.length === 0) {
-      categoryGrid.innerHTML = '<div class="empty-state"><p>No categories yet.</p></div>';
+      categoryGrid.innerHTML = '<div class="empty-state"><p>Categories coming soon.</p></div>';
     } else {
       categoryGrid.innerHTML = rows.map(c => `
-        <a href="shop.html?category=${encodeURIComponent(c.slug)}" class="product-card" style="flex-direction:row; align-items:center; text-align:left;">
-          <div style="width:72px;height:72px;background:var(--warm-beige);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:1rem;font-size:2rem;">✧</div>
-          <div>
-            <div class="product-cat" style="margin-bottom:0.25rem">${escapeHtml(c.name)}</div>
-            <div style="font-size:0.85rem;color:var(--text-secondary)">${escapeHtml(c.description || '')}</div>
+        <a href="shop.html?category=${encodeURIComponent(c.slug)}" class="category-card">
+          <div class="category-card-icon">🎨</div>
+          <div class="category-card-content">
+            <h3>${escapeHtml(c.name)}</h3>
+            <p>${escapeHtml(c.description || 'Explore handmade items')}</p>
           </div>
+          <svg class="category-card-arrow" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M7.5 15L12.5 10L7.5 5"/>
+          </svg>
         </a>
       `).join('');
     }
@@ -113,6 +118,9 @@ function wireFavButtons() {
         await supabase.from('favorites').insert([{ product_id: id }]);
         btn.classList.add('active');
       }
+    };
+  });
+}
     };
   });
 }

@@ -4,7 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouMadeIt — Handmade goods from independent makers</title>
-  <meta name="description" content="Discover unique handmade goods, arts and crafts from independent artisans. Buy direct from makers, or open your own shop.">
+  <meta name="description" content="Discover unique handmade goods, arts and crafts from independent artisans. Buy direct from makers.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -18,62 +21,118 @@
 </script>
 <div id="setup-banner"></div>
 <main>
-  <section class="section warm-bg">
+  <!-- Hero Section -->
+  <section class="hero-section">
     <div class="container">
-      <div class="hero">
-        <div>
-          <h1>Made by Hand.<br>Chosen with Heart.</h1>
-          <p class="lead">A marketplace for independent artists and makers. Ceramics, textiles, jewelry, prints, candles and more — each piece made with care, sold directly by the person who made it.</p>
+      <div class="hero-grid">
+        <div class="hero-content">
+          <span class="hero-badge">Handmade Marketplace</span>
+          <h1 class="hero-title">Made by Hand.<br><span class="hero-title-accent">Loved by Heart.</span></h1>
+          <p class="hero-description">Discover thoughtfully crafted treasures from independent artisans. Each piece tells a story of creativity, passion, and meticulous craftsmanship.</p>
           <div class="hero-actions">
-            <a href="shop.html" class="btn btn-primary btn-lg">Explore Handmade Goods</a>
-            <a href="seller-dashboard.html" class="btn btn-outline btn-lg">Start Selling</a>
+            <a href="shop.html" class="btn btn-primary btn-lg">
+              Explore Collection
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M7.5 15L12.5 10L7.5 5"/>
+              </svg>
+            </a>
+            <a href="seller-dashboard.html" class="btn btn-outline-white btn-lg">Become a Seller</a>
+          </div>
+          <div class="hero-features">
+            <div class="hero-feature">
+              <div class="hero-feature-icon">✨</div>
+              <span>Unique Handmade</span>
+            </div>
+            <div class="hero-feature">
+              <div class="hero-feature-icon">🎨</div>
+              <span>Independent Makers</span>
+            </div>
+            <div class="hero-feature">
+              <div class="hero-feature-icon">💝</div>
+              <span>Made with Love</span>
+            </div>
           </div>
         </div>
-        <div class="hero-image" aria-hidden="true">
-          <svg viewBox="0 0 640 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Handmade craft goods">
-            <rect width="640" height="520" fill="#44266E"/>
-            <circle cx="300" cy="260" r="130" fill="#FFF9F2" opacity="0.9"/>
-            <rect x="230" y="330" width="140" height="60" rx="8" fill="#6D4AFF" opacity="0.9"/>
-            <circle cx="200" cy="180" r="34" fill="#E9DFFF" opacity="0.8"/>
-            <circle cx="380" cy="300" r="26" fill="#F2E8DC" opacity="0.9"/>
-            <circle cx="440" cy="220" r="20" fill="#E9DFFF" opacity="0.8"/>
-            <circle cx="260" cy="380" r="22" fill="#FFF9F2" opacity="0.9"/>
-            <ellipse cx="300" cy="260" rx="40" ry="12" fill="#59345F" opacity="0.35"/>
-          </svg>
+        <div class="hero-visual">
+          <div class="hero-visual-bg"></div>
+          <div class="hero-product-showcase">
+            <img src="https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=700&fit=crop" alt="Handmade ceramic pottery" onerror="this.src='/images/placeholder.svg'">
+          </div>
         </div>
       </div>
     </div>
-  <section class="section" id="featured-section">
-    <div class="container">
-      <div class="flex-between" style="margin-bottom: 1.5rem">
-        <h2>New &amp; featured</h2>
-        <a href="shop.html" class="btn-ghost">Browse all &rarr;</a>
-      </div>
-      <div id="featured-grid" class="grid grid-cols-4"></div>
-    </div>
   </section>
 
-  <section class="section section-bg" id="categories-section">
-    <div class="container">
-      <h2 class="text-center" style="margin-bottom: 2rem">Shop by category</h2>
-      <div id="category-grid" class="grid grid-cols-4"></div>
-    </div>
-  </section>
-
+  <!-- Featured Products -->
   <section class="section">
     <div class="container">
-      <div class="grid grid-cols-3 warm-bg" style="border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden;">
-        <div style="padding: 2rem">
-          <h3>1. Find something handmade</h3>
-          <p>Browse unique products made by independent artists. Every listing shows the maker, materials, and processing time.</p>
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Handpicked Creations</h2>
+          <p class="section-subtitle">Curated pieces from our talented artisans</p>
         </div>
-        <div style="padding: 2rem">
-          <h3>2. Buy direct from the maker</h3>
-          <p>Add to cart, check out securely, and your order goes straight to the seller who made it.</p>
+        <a href="shop.html" class="btn btn-ghost">View All <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12L10 8L6 4"/></svg></a>
+      </div>
+      <div id="featured-grid" class="products-grid"></div>
+    </div>
+  </section>
+
+  <!-- Categories -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-header centered">
+        <div>
+          <h2 class="section-title">Shop by Category</h2>
+          <p class="section-subtitle">Find the perfect handmade piece for any occasion</p>
         </div>
-        <div style="padding: 2rem">
-          <h3>3. Sell your own work</h3>
-          <p>Open a shop, list your products, and manage orders from your own seller dashboard.</p>
+      </div>
+      <div id="category-grid" class="categories-grid"></div>
+    </div>
+  </section>
+
+  <!-- Benefits -->
+  <section class="benefits-section">
+    <div class="container">
+      <div class="benefits-grid">
+        <div class="benefit-card">
+          <div class="benefit-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <h3>Secure Shopping</h3>
+          <p>Shop with confidence on our trusted platform</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <h3>Support Artisans</h3>
+          <p>Every purchase directly supports independent makers</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <h3>Unique Quality</h3>
+          <p>One-of-a-kind pieces crafted with care</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+            </svg>
+          </div>
+          <h3>Personal Touch</h3>
+          <p>Many items can be personalized just for you</p>
         </div>
       </div>
     </div>
@@ -82,44 +141,47 @@
 
 <footer class="site-footer">
   <div class="container">
-    <div class="grid grid-cols-4">
-      <div class="footer-col">
-        <h4>YouMadeIt</h4>
-        <ul>
-          <li><a href="about.html">About us</a></li>
-          <li><a href="contact.html">Contact</a></li>
-          <li><a href="faq.html">FAQ</a></li>
-        </ul>
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <div class="brand-mark">YM</div>
+          <span class="brand-text">YouMadeIt</span>
+        </div>
+        <p class="footer-description">A marketplace celebrating handmade crafts and independent artisans. Discover unique treasures made with love.</p>
       </div>
-      <div class="footer-col">
-        <h4>Buy</h4>
-        <ul>
-          <li><a href="shop.html">Shop all</a></li>
-          <li><a href="cart.html">Cart</a></li>
-          <li><a href="orders.html">My orders</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Sell</h4>
-        <ul>
-          <li><a href="seller-dashboard.html">Seller dashboard</a></li>
-          <li><a href="seller-guidelines.html">Seller guidelines</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Legal</h4>
-        <ul>
-          <li><a href="privacy.html">Privacy policy</a></li>
-          <li><a href="terms.html">Terms of service</a></li>
-          <li><a href="shipping.html">Shipping</a></li>
-          <li><a href="returns.html">Returns &amp; refunds</a></li>
-        </ul>
+      <div class="footer-links">
+        <div class="footer-column">
+          <h4>Marketplace</h4>
+          <ul>
+            <li><a href="shop.html">Shop All</a></li>
+            <li><a href="shop.html">Categories</a></li>
+            <li><a href="seller-dashboard.html">Become a Seller</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>Customer Care</h4>
+          <ul>
+            <li><a href="cart.html">Shopping Cart</a></li>
+            <li><a href="orders.html">My Orders</a></li>
+            <li><a href="contact.html">Contact Us</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>About</h4>
+          <ul>
+            <li><a href="about.html">Our Story</a></li>
+            <li><a href="privacy.html">Privacy Policy</a></li>
+            <li><a href="terms.html">Terms of Service</a></li>
+          </ul>
+        </div>
       </div>
     </div>
-    <p class="text-center" style="margin-top: 2rem; font-size: 0.85rem; color: var(--text-light);">&copy; YouMadeIt Marketplace. The homepage illustration is development content, not a product listing.</p>
+    <div class="footer-bottom">
+      <p>&copy; 2024 YouMadeIt. All rights reserved.</p>
+    </div>
   </div>
 </footer>
+
 <script type="module" src="/js/pages/home.js"></script>
 </body>
 </html>
-  </section>
