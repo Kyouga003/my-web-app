@@ -1,10 +1,15 @@
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const supabaseBrowserSdk = fs.readFileSync(path.join(
+  __dirname, 'node_modules', '@supabase', 'supabase-js', 'dist', 'umd', 'supabase.js'
+), 'utf8');
 
 // Supabase server client (anon key). User-scoped operations forward the
 // caller's JWT so Row Level Security sees the real authenticated user.
@@ -27,6 +32,7 @@ app.use((_req, res, next) => {
 app.get('/js/config.js', (_req, res) => {
   res.type('application/javascript');
   res.send(
+    supabaseBrowserSdk + '\n' +
     'window.SUPABASE_CONFIG = {\n' +
     '  url: ' + JSON.stringify(process.env.SUPABASE_URL) + ',\n' +
     '  key: ' + JSON.stringify(process.env.SUPABASE_KEY) + '\n' +
@@ -34,8 +40,8 @@ app.get('/js/config.js', (_req, res) => {
   );
 });
 
-app.get('/api/health', async (_req, res) => {
-  const { error } = await supabase.from('profiles').select('id').limit(1);
+app.get('/api/health', async (req, res) => {
+  const { error } = await dbFor(req).from('profiles').select('id').limit(1);
   res.json({ ok: !error, database: !error ? 'connected' : error.message });
 });
 
@@ -43,15 +49,20 @@ app.get('/api/health', async (_req, res) => {
 const REQUIRED_TABLES = [
   'profiles', 'categories', 'shops', 'products', 'product_images', 'carts',
   'cart_items', 'favorites', 'orders', 'order_items', 'payments', 'reviews',
-  'notifications', 'sales_events', 'seller_inquiries', 'reports', 'messages'
+  'notifications', 'sales_events', 'seller_inquiries', 'reports', 'messages',
+  'admin_messages'
 ];
 
-app.get('/api/db/status', async (_req, res) => {
+app.get('/api/db/status', async (req, res) => {
   const status = {};
   for (const table of REQUIRED_TABLES) {
-    const { error } = await supabase.from(table).select('*').limit(1);
-    status[table] = error ? { exists: false, error: error.message }
-      : { exists: true };
+    const { error } = await dbFor(req).from(table).select('*').limit(1);
+    const missing = error && ['PGRST205', '42P01'].includes(error.code);
+    status[table] = {
+      exists: !missing,
+      queryOk: !error,
+      ...(error ? { error: error.message, code: error.code } : {})
+    };
   }
   res.json(status);
 });
@@ -65,6 +76,10 @@ function serverSupabase(req) {
   });
 }
 
+function dbFor(req) {
+  return req.db || supabase;
+}
+
 async function requireUser(req, res, next) {
   const token = req.headers.authorization && req.headers.authorization.startsWith('Bearer ')
     ? req.headers.authorization.slice(7) : null;
@@ -72,12 +87,13 @@ async function requireUser(req, res, next) {
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return res.status(401).json({ error: 'Invalid or expired session' });
   req.user = user;
+  req.db = serverSupabase(req);
   next();
 }
 
 function requireRole(allowed) {
   return async (req, res, next) => {
-    const { data: profile } = await supabase
+    const { data: profile } = await dbFor(req)
       .from('profiles').select('role').eq('id', req.user.id).single();
     if (!profile || !allowed.includes(profile.role)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
@@ -86,11 +102,28 @@ function requireRole(allowed) {
   };
 }
 
+async function requireApproved(req, res, next) {
+  const { data: profile, error } = await dbFor(req)
+    .from('profiles')
+    .select('role, approval_status')
+    .eq('id', req.user.id)
+    .single();
+  if (error || !profile) return res.status(403).json({ error: 'Account profile is unavailable' });
+  if (profile.role !== 'admin' && profile.approval_status !== 'approved') {
+    return res.status(403).json({
+      error: profile.approval_status === 'rejected' ? 'Account application was not approved' : 'Account approval is pending',
+      approval_status: profile.approval_status
+    });
+  }
+  req.profile = profile;
+  next();
+}
+
 // ---------------------------------------------------------------------------
 // Support / contact messages
 // ---------------------------------------------------------------------------
-app.get('/api/messages', requireUser, requireRole(['admin']), async (_req, res) => {
-  const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: false });
+app.get('/api/messages', requireUser, requireRole(['admin']), async (req, res) => {
+  const { data, error } = await dbFor(req).from('messages').select('*').order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);
 });
@@ -100,7 +133,7 @@ app.post('/api/messages', async (req, res) => {
   if (!name || !email || !subject || !content) {
     return res.status(400).json({ error: 'All fields are required' });
   }
-  const { data, error } = await supabase.from('messages').insert([{
+  const { data, error } = await dbFor(req).from('messages').insert([{
     name, email, subject, content
   }]);
   if (error) return res.status(500).json({ error: error.message });
@@ -110,17 +143,17 @@ app.post('/api/messages', async (req, res) => {
 // ---------------------------------------------------------------------------
 // Public read APIs (no auth required)
 // ---------------------------------------------------------------------------
-app.get('/api/categories', async (_req, res) => {
+app.get('/api/categories', async (req, res) => {
   const { data, error } = await supabase
     .from('categories').select('*').order('name');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);
 });
 
-app.get('/api/shops', async (_req, res) => {
+app.get('/api/shops', async (req, res) => {
   const { data, error } = await supabase
     .from('shops')
-    .select('*, profiles(display_name, avatar_url)')
+    .select('*, profiles:public_profiles(display_name, avatar_url, bio)')
     .eq('is_active', true)
     .order('name');
   if (error) return res.status(500).json({ error: error.message });
@@ -130,7 +163,7 @@ app.get('/api/shops', async (_req, res) => {
 app.get('/api/shops/:slug', async (req, res) => {
   const { data: shop, error } = await supabase
     .from('shops')
-    .select('*, profiles(*)')
+    .select('*, profiles:public_profiles(*)')
     .eq('slug', req.params.slug)
     .single();
   if (error || !shop) return res.status(404).json({ error: 'Shop not found' });
@@ -146,30 +179,30 @@ app.get('/api/shops/:slug', async (req, res) => {
 // ---------------------------------------------------------------------------
 // Seller: shop management (auth required)
 // ---------------------------------------------------------------------------
-app.post('/api/shops', requireUser, async (req, res) => {
+app.post('/api/shops', requireUser, requireApproved, async (req, res) => {
   const { name, slug, description, location, processing_time, shipping_info, return_policy, social_links } = req.body;
   if (!name || !slug) return res.status(400).json({ error: 'Shop name and slug are required' });
-  const { data: profile } = await supabase.from('profiles').select('role, id').eq('id', req.user.id).single();
+  const { data: profile } = await dbFor(req).from('profiles').select('role, id').eq('id', req.user.id).single();
   if (!profile) {
     return res.status(403).json({ error: 'Profile not found' });
   }
-  const { data: existing } = await supabase.from('shops').select('id').eq('slug', slug).limit(1);
+  const { data: existing } = await dbFor(req).from('shops').select('id').eq('slug', slug).limit(1);
   if (existing && existing.length) return res.status(409).json({ error: 'Shop URL already taken' });
-  const { data, error } = await supabase.from('shops').insert([{
+  const { data, error } = await dbFor(req).from('shops').insert([{
     owner_id: req.user.id, name, slug, description, location, processing_time,
     shipping_info, return_policy, social_links: social_links || {}
   }]).select();
   if (error) return res.status(500).json({ error: error.message });
-  await supabase.from('profiles').update({ role: 'seller' }).eq('id', req.user.id);
+  await dbFor(req).from('profiles').update({ role: 'seller' }).eq('id', req.user.id);
   res.status(201).json(data[0]);
 });
 
-app.patch('/api/shops/:id', requireUser, async (req, res) => {
-  const { data: shop } = await supabase.from('shops').select('owner_id').eq('id', req.params.id).single();
+app.patch('/api/shops/:id', requireUser, requireApproved, async (req, res) => {
+  const { data: shop } = await dbFor(req).from('shops').select('owner_id').eq('id', req.params.id).single();
   if (!shop || shop.owner_id !== req.user.id) {
     return res.status(403).json({ error: 'Not your shop' });
   }
-  const { data, error } = await supabase.from('shops').update(req.body).eq('id', req.params.id).select();
+  const { data, error } = await dbFor(req).from('shops').update(req.body).eq('id', req.params.id).select();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data[0]);
 });
@@ -177,30 +210,30 @@ app.patch('/api/shops/:id', requireUser, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Seller inquiries (buyer-to-seller contact)
 // ---------------------------------------------------------------------------
-app.post('/api/seller-inquiries', requireUser, async (req, res) => {
+app.post('/api/seller-inquiries', requireUser, requireApproved, async (req, res) => {
   const { shop_id, product_id, subject, message } = req.body || {};
   if (!shop_id || !subject || !message) {
     return res.status(400).json({ error: 'Shop, subject and message are required' });
   }
-  const { data: shop } = await supabase.from('shops').select('id, owner_id').eq('id', shop_id).single();
+  const { data: shop } = await dbFor(req).from('shops').select('id, owner_id').eq('id', shop_id).single();
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
-  const { data, error } = await supabase.from('seller_inquiries').insert([{
+  const { data, error } = await dbFor(req).from('seller_inquiries').insert([{
     shop_id, product_id: product_id || null, buyer_id: req.user.id, subject, message
   }]).select();
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json(data[0]);
 });
 
-app.get('/api/seller-inquiries', requireUser, async (req, res) => {
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', req.user.id).single();
+app.get('/api/seller-inquiries', requireUser, requireApproved, async (req, res) => {
+  const { data: profile } = await dbFor(req).from('profiles').select('role').eq('id', req.user.id).single();
   const isAdmin = profile && profile.role === 'admin';
   let shopIds = null;
   if (!isAdmin) {
-    const { data: shops } = await supabase.from('shops').select('id').eq('owner_id', req.user.id);
+    const { data: shops } = await dbFor(req).from('shops').select('id').eq('owner_id', req.user.id);
     shopIds = (shops || []).map(s => s.id);
     if (shopIds.length === 0) return res.json([]);
   }
-  let query = supabase.from('seller_inquiries').select('*, shops(name, slug), profiles(display_name)').order('created_at', { ascending: false });
+  let query = dbFor(req).from('seller_inquiries').select('*, shops(name, slug), profiles:public_profiles(display_name)').order('created_at', { ascending: false });
   if (!isAdmin) query = query.in('shop_id', shopIds);
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
@@ -210,22 +243,27 @@ app.get('/api/seller-inquiries', requireUser, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Seller: product management (auth required, ownership enforced)
 // ---------------------------------------------------------------------------
-app.post('/api/products', requireUser, async (req, res) => {
+app.post('/api/products', requireUser, requireApproved, async (req, res) => {
   const {
     shop_id, category_id, name, description, price, currency, status, sku,
     quantity, condition, materials, dimensions, weight, color, style,
     personalization, processing_time, shipping_info, tags
   } = req.body;
   if (!shop_id || !name) return res.status(400).json({ error: 'Shop and product name are required' });
-  const { data: shop } = await supabase.from('shops').select('owner_id').eq('id', shop_id).single();
+  const { data: shop } = await dbFor(req).from('shops').select('owner_id').eq('id', shop_id).single();
   if (!shop || shop.owner_id !== req.user.id) {
     return res.status(403).json({ error: 'Not your shop' });
   }
-  const priceCents = Math.round(parseFloat(price) * 100) || 0;
-  const { data, error } = await supabase.from('products').insert([{
+  const parsedPrice = Number(price);
+  const parsedQuantity = Number(quantity);
+  if (!Number.isFinite(parsedPrice) || parsedPrice < 0 || !Number.isInteger(parsedQuantity) || parsedQuantity < 0) {
+    return res.status(400).json({ error: 'Enter a valid non-negative price and stock quantity' });
+  }
+  const priceCents = Math.round(parsedPrice * 100);
+  const { data, error } = await dbFor(req).from('products').insert([{
     seller_id: req.user.id, shop_id, category_id, name, description,
     price_cents: priceCents, currency: currency || 'USD',
-    status: status || 'draft', sku, quantity: parseInt(quantity) || 0,
+    status: status || 'draft', moderation_status: 'pending', sku, quantity: parsedQuantity,
     condition, materials, dimensions, weight, color, style,
     personalization, processing_time, shipping_info,
     tags: Array.isArray(tags) ? tags : [],
@@ -235,29 +273,50 @@ app.post('/api/products', requireUser, async (req, res) => {
   res.status(201).json(data[0]);
 });
 
-app.patch('/api/products/:id', requireUser, async (req, res) => {
-  const { data: product } = await supabase.from('products').select('seller_id, status').eq('id', req.params.id).single();
+app.patch('/api/products/:id', requireUser, requireApproved, async (req, res) => {
+  const { data: product } = await dbFor(req).from('products').select('seller_id, status').eq('id', req.params.id).single();
   if (!product || product.seller_id !== req.user.id) {
     return res.status(403).json({ error: 'Not your product' });
   }
-  const updates = { ...req.body };
-  if (updates.price !== undefined) updates.price_cents = Math.round(parseFloat(updates.price) * 100);
-  delete updates.price;
+  const allowedFields = [
+    'category_id', 'name', 'description', 'currency', 'status', 'sku', 'quantity',
+    'condition', 'materials', 'dimensions', 'weight', 'color', 'style',
+    'personalization', 'processing_time', 'shipping_info', 'tags'
+  ];
+  const body = req.body || {};
+  const updates = Object.fromEntries(
+    allowedFields.filter(field => Object.hasOwn(body, field)).map(field => [field, body[field]])
+  );
+  if (updates.status && !['draft', 'published'].includes(updates.status)) {
+    return res.status(400).json({ error: 'Invalid listing status' });
+  }
+  if (Object.hasOwn(body, 'price')) {
+    const price = Number(body.price);
+    if (!Number.isFinite(price) || price < 0) return res.status(400).json({ error: 'Enter a valid non-negative price' });
+    updates.price_cents = Math.round(price * 100);
+  }
   if (updates.status === 'published' && product.status !== 'published') {
     updates.published_at = new Date().toISOString();
   }
-  const { data, error } = await supabase.from('products').update(updates).eq('id', req.params.id).select();
+  const contentChanged = Object.keys(updates).some(field => field !== 'status');
+  if (contentChanged) {
+    updates.moderation_status = 'pending';
+    updates.moderation_note = null;
+    updates.reviewed_at = null;
+    updates.reviewed_by = null;
+  }
+  const { data, error } = await dbFor(req).from('products').update(updates).eq('id', req.params.id).select();
   if (error) return res.status(500).json({ error: error.message });
   if (!data.length) return res.status(404).json({ error: 'Product not found' });
   res.json(data[0]);
 });
 
-app.delete('/api/products/:id', requireUser, async (req, res) => {
-  const { data: product } = await supabase.from('products').select('seller_id').eq('id', req.params.id).single();
+app.delete('/api/products/:id', requireUser, requireApproved, async (req, res) => {
+  const { data: product } = await dbFor(req).from('products').select('seller_id').eq('id', req.params.id).single();
   if (!product || product.seller_id !== req.user.id) {
     return res.status(403).json({ error: 'Not your product' });
   }
-  const { error } = await supabase.from('products').delete().eq('id', req.params.id);
+  const { error } = await dbFor(req).from('products').delete().eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ message: 'Product deleted' });
 });
@@ -265,16 +324,16 @@ app.delete('/api/products/:id', requireUser, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Buyer: orders (server-validated totals and stock)
 // ---------------------------------------------------------------------------
-app.post('/api/orders', requireUser, async (req, res) => {
+app.post('/api/orders', requireUser, requireApproved, async (req, res) => {
   const { items, shipping_address, delivery_method, notes, payment_intent_id } = req.body;
   if (!Array.isArray(items) || !items.length) {
     return res.status(400).json({ error: 'No items in order' });
   }
 
   if (payment_intent_id) {
-    const { data: payment } = await supabase.from('payments').select('provider_payment_id').eq('provider_payment_id', payment_intent_id).single();
+    const { data: payment } = await dbFor(req).from('payments').select('provider_payment_id').eq('provider_payment_id', payment_intent_id).single();
     if (payment) {
-      const { data: linked } = await supabase.from('orders').select('id').eq('id', payment.order_id).limit(1);
+      const { data: linked } = await dbFor(req).from('orders').select('id').eq('id', payment.order_id).limit(1);
       if (linked && linked.length) {
         return res.status(409).json({ error: 'Order already created for this payment' });
       }
@@ -282,7 +341,7 @@ app.post('/api/orders', requireUser, async (req, res) => {
   }
 
   const productIds = [...new Set(items.map(i => i.product_id))];
-  const { data: products } = await supabase
+  const { data: products } = await dbFor(req)
     .from('products').select('id, seller_id, name, price_cents, quantity, status').in('id', productIds);
   if (!products || products.length !== productIds.length) {
     return res.status(400).json({ error: 'One or more products are no longer available' });
@@ -310,7 +369,7 @@ app.post('/api/orders', requireUser, async (req, res) => {
   const total = subtotal + shippingCents;
   const orderNumber = 'CRAFT-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 5).toUpperCase();
 
-  const { data: order, error: orderError } = await supabase.from('orders').insert([{
+  const { data: order, error: orderError } = await dbFor(req).from('orders').insert([{
     order_number: orderNumber, buyer_id: req.user.id,
     subtotal_cents: subtotal, shipping_cents: shippingCents, total_cents: total,
     shipping_address: shipping_address || {}, delivery_method, notes
@@ -321,15 +380,15 @@ app.post('/api/orders', requireUser, async (req, res) => {
     order_id: order.id, product_id: li.product.id, seller_id: li.product.seller_id,
     product_name_snapshot: li.product.name, price_cents: li.product.price_cents, quantity: li.qty
   }));
-  const { error: oiError } = await supabase.from('order_items').insert(orderItemsRows);
+  const { error: oiError } = await dbFor(req).from('order_items').insert(orderItemsRows);
   if (oiError) {
-    await supabase.from('orders').delete().eq('id', order.id);
+    await dbFor(req).from('orders').delete().eq('id', order.id);
     return res.status(500).json({ error: oiError.message });
   }
 
   const restored = [];
   for (const li of lineItems) {
-    const { error: decError, data: decData } = await supabase
+    const { error: decError, data: decData } = await dbFor(req)
       .from('products')
       .update({ quantity: li.product.quantity - li.qty })
       .eq('id', li.product.id)
@@ -337,29 +396,29 @@ app.post('/api/orders', requireUser, async (req, res) => {
       .select('quantity');
     if (decError || !decData || !decData.length) {
       for (const r of restored) {
-        await supabase.from('products').update({ quantity: r.before }).eq('id', r.id);
+        await dbFor(req).from('products').update({ quantity: r.before }).eq('id', r.id);
       }
-      await supabase.from('order_items').delete().eq('order_id', order.id);
-      await supabase.from('orders').delete().eq('id', order.id);
+      await dbFor(req).from('order_items').delete().eq('order_id', order.id);
+      await dbFor(req).from('orders').delete().eq('id', order.id);
       return res.status(409).json({ error: 'Stock changed while ordering: ' + li.product.name });
     }
     restored.push({ id: li.product.id, before: li.product.quantity });
   }
 
-  const { error: payError } = await supabase.from('payments').insert([{
+  const { error: payError } = await dbFor(req).from('payments').insert([{
     order_id: order.id, provider: 'sandbox', provider_payment_id: payment_intent_id || null,
     amount_cents: total, currency: 'USD', status: 'pending'
   }]);
   if (payError) console.error('Payment record error:', payError.message);
 
   const firstItem = lineItems[0];
-  await supabase.from('sales_events').insert([{
+  await dbFor(req).from('sales_events').insert([{
     type: 'order_placed', order_id: order.id, product_id: firstItem.product.id,
     seller_id: firstItem.product.seller_id, product_name_snapshot: firstItem.product.name,
     quantity: firstItem.qty, gross_cents: total, currency: 'USD'
   }]);
 
-  await supabase.from('notifications').insert([{
+  await dbFor(req).from('notifications').insert([{
     user_id: req.user.id, type: 'order_placed',
     title: 'Order received',
     body: 'Your order #' + orderNumber + ' has been placed.',
@@ -367,7 +426,7 @@ app.post('/api/orders', requireUser, async (req, res) => {
   }]);
 
   for (const li of lineItems) {
-    await supabase.from('notifications').insert([{
+    await dbFor(req).from('notifications').insert([{
       user_id: li.product.seller_id, type: 'order_placed',
       title: 'New order',
       body: 'New order #' + orderNumber + ' includes "' + li.product.name + '".',
@@ -378,11 +437,11 @@ app.post('/api/orders', requireUser, async (req, res) => {
   res.status(201).json({ order, payment_intent_id: payment_intent_id || null });
 });
 
-app.get('/api/orders/:id', requireUser, async (req, res) => {
-  const { data: order, error } = await supabase
+app.get('/api/orders/:id', requireUser, requireApproved, async (req, res) => {
+  const { data: order, error } = await dbFor(req)
     .from('orders').select('*, order_items(*)').eq('id', req.params.id).single();
   if (error || !order) return res.status(404).json({ error: 'Order not found' });
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', req.user.id).single();
+  const { data: profile } = await dbFor(req).from('profiles').select('role').eq('id', req.user.id).single();
   const isSeller = order.order_items.some(oi => oi.seller_id === req.user.id);
   if (order.buyer_id !== req.user.id && !isSeller && profile.role !== 'admin') {
     return res.status(403).json({ error: 'Not your order' });
@@ -390,9 +449,9 @@ app.get('/api/orders/:id', requireUser, async (req, res) => {
   res.json(order);
 });
 
-app.get('/api/orders', requireUser, async (req, res) => {
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', req.user.id).single();
-  let query = supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
+app.get('/api/orders', requireUser, requireApproved, async (req, res) => {
+  const { data: profile } = await dbFor(req).from('profiles').select('role').eq('id', req.user.id).single();
+  let query = dbFor(req).from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
   if (profile.role === 'admin') {
     // all orders
   } else if (profile.role === 'seller') {
@@ -405,23 +464,23 @@ app.get('/api/orders', requireUser, async (req, res) => {
   res.json(data || []);
 });
 
-app.patch('/api/orders/:id/ship', requireUser, async (req, res) => {
+app.patch('/api/orders/:id/ship', requireUser, requireApproved, async (req, res) => {
   const { tracking_number } = req.body;
-  const { data: order } = await supabase.from('orders').select('*, order_items(*)').eq('id', req.params.id).single();
+  const { data: order } = await dbFor(req).from('orders').select('*, order_items(*)').eq('id', req.params.id).single();
   if (!order) return res.status(404).json({ error: 'Order not found' });
   const isSeller = order.order_items.some(oi => oi.seller_id === req.user.id);
   if (!isSeller) return res.status(403).json({ error: 'Only a seller of this order can ship it' });
   if (order.status !== 'paid' && order.status !== 'processing') {
     return res.status(400).json({ error: 'Order is not ready to ship' });
   }
-  const { data, error } = await supabase.from('orders')
+  const { data, error } = await dbFor(req).from('orders')
     .update({ status: 'shipped', tracking_number }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
-  await supabase.from('sales_events').insert([{
+  await dbFor(req).from('sales_events').insert([{
     type: 'order_shipped', order_id: order.id, seller_id: req.user.id,
     product_name_snapshot: 'Order #' + order.order_number, gross_cents: order.total_cents, currency: order.currency
   }]);
-  await supabase.from('notifications').insert([{
+  await dbFor(req).from('notifications').insert([{
     user_id: order.buyer_id, type: 'order_shipped',
     body: 'Your order #' + order.order_number + ' is on its way' + (tracking_number ? ' (tracking: ' + tracking_number + ')' : '') + '.',
     link: '/orders.html?id=' + order.id
@@ -429,24 +488,24 @@ app.patch('/api/orders/:id/ship', requireUser, async (req, res) => {
   res.json(data);
 });
 
-app.patch('/api/orders/:id/cancel', requireUser, async (req, res) => {
-  const { data: order } = await supabase.from('orders').select('*, order_items(*)').eq('id', req.params.id).single();
+app.patch('/api/orders/:id/cancel', requireUser, requireApproved, async (req, res) => {
+  const { data: order } = await dbFor(req).from('orders').select('*, order_items(*)').eq('id', req.params.id).single();
   if (!order) return res.status(404).json({ error: 'Order not found' });
   if (order.buyer_id !== req.user.id) return res.status(403).json({ error: 'Not your order' });
   if (!['pending_payment', 'paid'].includes(order.status)) {
     return res.status(400).json({ error: 'Order cannot be cancelled at this stage' });
   }
-  const { data, error } = await supabase.from('orders')
+  const { data, error } = await dbFor(req).from('orders')
     .update({ status: 'cancelled' }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   for (const oi of order.order_items) {
     if (!oi.product_id) continue;
-    const { data: prod } = await supabase.from('products').select('quantity').eq('id', oi.product_id).single();
+    const { data: prod } = await dbFor(req).from('products').select('quantity').eq('id', oi.product_id).single();
     if (prod) {
-      await supabase.from('products').update({ quantity: prod.quantity + oi.quantity }).eq('id', oi.product_id);
+      await dbFor(req).from('products').update({ quantity: prod.quantity + oi.quantity }).eq('id', oi.product_id);
     }
   }
-  await supabase.from('sales_events').insert([{
+  await dbFor(req).from('sales_events').insert([{
     type: 'order_cancelled', order_id: order.id,
     product_name_snapshot: 'Order #' + order.order_number
   }]);
@@ -456,32 +515,32 @@ app.patch('/api/orders/:id/cancel', requireUser, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Payments — SANDBOX (no live payment provider configured)
 // ---------------------------------------------------------------------------
-app.post('/api/payments/create-intent', requireUser, async (req, res) => {
+app.post('/api/payments/create-intent', requireUser, requireApproved, async (req, res) => {
   const { amount_cents } = req.body;
   if (!amount_cents || amount_cents <= 0) return res.status(400).json({ error: 'Invalid amount' });
   const intentId = 'sandbox_intent_' + Date.now().toString(36);
-  await supabase.from('payments').insert([{
+  await dbFor(req).from('payments').insert([{
     order_id: null, provider: 'sandbox', provider_payment_id: intentId,
     amount_cents, currency: 'USD', status: 'pending'
   }]);
   res.json({ intent_id: intentId, amount_cents, currency: 'USD', test: true });
 });
 
-app.post('/api/payments/confirm', requireUser, async (req, res) => {
+app.post('/api/payments/confirm', requireUser, requireApproved, async (req, res) => {
   const { intent_id } = req.body;
-  const { data: payment } = await supabase.from('payments').select('*, orders(*)').eq('provider_payment_id', intent_id).single();
+  const { data: payment } = await dbFor(req).from('payments').select('*, orders(*)').eq('provider_payment_id', intent_id).single();
   if (!payment) return res.status(404).json({ error: 'Payment not found' });
   if (payment.status === 'paid') return res.json({ status: 'already_paid' });
-  const { error } = await supabase.from('payments').update({ status: 'paid' }).eq('id', payment.id);
+  const { error } = await dbFor(req).from('payments').update({ status: 'paid' }).eq('id', payment.id);
   if (error) return res.status(500).json({ error: error.message });
   const order = payment.orders;
   if (order && order.status === 'pending_payment') {
-    await supabase.from('orders').update({ status: 'paid' }).eq('id', order.id);
-    await supabase.from('sales_events').insert([{
+    await dbFor(req).from('orders').update({ status: 'paid' }).eq('id', order.id);
+    await dbFor(req).from('sales_events').insert([{
       type: 'payment_confirmed', order_id: order.id,
       product_name_snapshot: 'Order #' + order.order_number, gross_cents: order.total_cents, currency: order.currency
     }]);
-    await supabase.from('notifications').insert([{
+    await dbFor(req).from('notifications').insert([{
       user_id: order.buyer_id, type: 'payment_confirmed',
       title: 'Payment confirmed',
       body: 'Payment for order #' + order.order_number + ' was confirmed.',
@@ -494,14 +553,147 @@ app.post('/api/payments/confirm', requireUser, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Admin
 // ---------------------------------------------------------------------------
+app.get('/api/admin/accounts', requireUser, requireRole(['admin']), async (req, res) => {
+  const allowedStatuses = ['pending', 'approved', 'rejected'];
+  const status = req.query.status;
+  let query = dbFor(req)
+    .from('profiles')
+    .select('id, display_name, email, role, approval_status, created_at, approved_at')
+    .order('created_at', { ascending: false })
+    .limit(300);
+  if (allowedStatuses.includes(status)) query = query.eq('approval_status', status);
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+app.patch('/api/admin/accounts/:id/approval', requireUser, requireRole(['admin']), async (req, res) => {
+  const { approval_status } = req.body || {};
+  if (!['approved', 'rejected'].includes(approval_status)) {
+    return res.status(400).json({ error: 'Choose approved or rejected' });
+  }
+  const updates = {
+    approval_status,
+    approved_at: approval_status === 'approved' ? new Date().toISOString() : null,
+    approved_by: approval_status === 'approved' ? req.user.id : null
+  };
+  const { data, error } = await dbFor(req)
+    .from('profiles').update(updates).eq('id', req.params.id)
+    .select('id, display_name, email, role, approval_status, approved_at').maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: 'Account not found' });
+  await dbFor(req).from('notifications').insert([{
+    user_id: data.id,
+    type: 'account_review',
+    title: approval_status === 'approved' ? 'Account approved' : 'Account not approved',
+    body: approval_status === 'approved'
+      ? 'Your account is approved. You can now shop and open a seller shop.'
+      : 'Your account application was not approved. Contact support if you believe this is an error.',
+    link: '/profile.html'
+  }]);
+  res.json(data);
+});
+
+app.get('/api/admin/products', requireUser, requireRole(['admin']), async (req, res) => {
+  const status = ['pending', 'approved', 'rejected'].includes(req.query.status)
+    ? req.query.status : 'pending';
+  const { data, error } = await dbFor(req)
+    .from('products')
+    .select('id, name, description, price_cents, currency, status, moderation_status, moderation_note, created_at, seller_id, shop_id, product_images(id, url, is_main, sort_order), shops(name, slug), profiles:profiles!products_seller_id_fkey(display_name, email)')
+    .eq('moderation_status', status)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+app.patch('/api/admin/products/:id/review', requireUser, requireRole(['admin']), async (req, res) => {
+  const { decision, note } = req.body || {};
+  if (!['approved', 'rejected'].includes(decision)) {
+    return res.status(400).json({ error: 'Choose approved or rejected' });
+  }
+  const moderationNote = typeof note === 'string' ? note.trim().slice(0, 1000) : '';
+  const updates = {
+    moderation_status: decision,
+    moderation_note: moderationNote || null,
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: req.user.id,
+    ...(decision === 'rejected' ? { status: 'draft' } : {})
+  };
+  const { data, error } = await dbFor(req)
+    .from('products').update(updates).eq('id', req.params.id)
+    .select('id, name, seller_id, moderation_status, status').maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: 'Product not found' });
+  await dbFor(req).from('notifications').insert([{
+    user_id: data.seller_id,
+    type: 'product_review',
+    title: decision === 'approved' ? 'Product approved' : 'Product needs changes',
+    body: decision === 'approved'
+      ? 'Your product "' + data.name + '" was approved.'
+      : 'Your product "' + data.name + '" was not approved.' + (moderationNote ? ' Note: ' + moderationNote : ''),
+    link: '/seller-products.html'
+  }]);
+  res.json(data);
+});
+
+app.post('/api/admin/messages', requireUser, requireRole(['admin']), async (req, res) => {
+  const { recipient_id, product_id, subject, body } = req.body || {};
+  if (!recipient_id || !subject || !body || typeof subject !== 'string' || typeof body !== 'string') {
+    return res.status(400).json({ error: 'Recipient, subject and message are required' });
+  }
+  const { data: recipient, error: recipientError } = await dbFor(req)
+    .from('profiles').select('id').eq('id', recipient_id).maybeSingle();
+  if (recipientError) return res.status(500).json({ error: recipientError.message });
+  if (!recipient) return res.status(404).json({ error: 'Account not found' });
+  const { data, error } = await dbFor(req).from('admin_messages').insert([{
+    admin_id: req.user.id,
+    recipient_id,
+    product_id: product_id || null,
+    subject: subject.trim().slice(0, 160),
+    body: body.trim().slice(0, 5000)
+  }]).select('id, recipient_id, product_id, subject, body, created_at').single();
+  if (error) return res.status(500).json({ error: error.message });
+  await dbFor(req).from('notifications').insert([{
+    user_id: recipient_id,
+    type: 'admin_message',
+    title: 'Message from marketplace administration',
+    body: data.subject,
+    link: '/profile.html#admin-messages'
+  }]);
+  res.status(201).json(data);
+});
+
+app.get('/api/account/admin-messages', requireUser, async (req, res) => {
+  const { data, error } = await dbFor(req).from('admin_messages')
+    .select('id, subject, body, product_id, read_at, created_at')
+    .eq('recipient_id', req.user.id)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+app.patch('/api/account/admin-messages/:id/read', requireUser, async (req, res) => {
+  const { data, error } = await dbFor(req).from('admin_messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', req.params.id)
+    .eq('recipient_id', req.user.id)
+    .select('id, read_at')
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: 'Message not found' });
+  res.json(data);
+});
+
 app.get('/api/admin/orders', requireUser, requireRole(['admin']), async (req, res) => {
-  const { data, error } = await supabase.from('orders').select('*, profiles(display_name)').order('created_at', { ascending: false });
+  const { data, error } = await dbFor(req).from('orders').select('*, profiles(display_name)').order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);
 });
 
 app.patch('/api/admin/products/:id/hide', requireUser, requireRole(['admin']), async (req, res) => {
-  const { data, error } = await supabase.from('products').update({ status: 'draft' }).eq('id', req.params.id).select();
+  const { data, error } = await dbFor(req).from('products').update({ status: 'draft' }).eq('id', req.params.id).select();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data[0]);
 });

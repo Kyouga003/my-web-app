@@ -1,12 +1,24 @@
-// Seller dashboard — onboarding, stats, recent orders.
+// Seller dashboard ï¿½ onboarding, stats, recent orders.
 import { supabase } from '/js/init.js';
 import { formatMoney, escapeHtml, showToast } from '/js/ui.js';
 import { renderAuthLinks, updateCartCount, refreshCartCount } from '/js/nav.js';
 
 const onboard = document.getElementById('seller-onboard');
+const pendingPanel = document.getElementById('seller-account-pending');
 const statsEl = document.getElementById('seller-stats');
 const recentEl = document.getElementById('seller-recent-orders');
 const requireAuthEl = document.getElementById('seller-require-auth');
+const dashboardHeader = document.getElementById('seller-dashboard-header');
+const orderHeading = document.getElementById('seller-order-heading');
+const productsHeading = document.getElementById('seller-products-heading');
+
+function showSellerWorkspace(visible) {
+  dashboardHeader.style.display = visible ? 'flex' : 'none';
+  statsEl.style.display = visible ? 'grid' : 'none';
+  orderHeading.style.display = visible ? 'flex' : 'none';
+  recentEl.style.display = visible ? 'block' : 'none';
+  productsHeading.style.display = visible ? 'block' : 'none';
+}
 
 function showSetup(message) {
   const b = document.getElementById('setup-banner');
@@ -80,22 +92,42 @@ async function loadRecentOrders() {
 
 window.addEventListener('authstate', async () => {
   const { currentUser } = await import('/js/init.js');
-  const prof = currentUser ? await supabase.from('profiles').select('role,display_name').eq('id', currentUser.id).single() : null;
+  const prof = currentUser ? await supabase.from('profiles').select('role,display_name,approval_status').eq('id', currentUser.id).single() : null;
   renderAuthLinks(currentUser, prof && prof.data);
   if (!currentUser) {
     requireAuthEl.style.display = 'block';
+    onboard.style.display = 'none';
+    pendingPanel.style.display = 'none';
+    showSellerWorkspace(false);
     updateCartCount(0);
     return;
   }
   requireAuthEl.style.display = 'none';
-  const role = prof.data.role;
+  const role = prof && prof.data ? prof.data.role : 'buyer';
   updateCartCount(0);
+
+  if (role === 'admin') {
+    window.location.replace('admin.html');
+    return;
+  }
+
+  const approvalStatus = prof && prof.data ? prof.data.approval_status : 'pending';
+  if (approvalStatus !== 'approved') {
+    requireAuthEl.style.display = 'none';
+    onboard.style.display = 'none';
+    showSellerWorkspace(false);
+    pendingPanel.style.display = 'block';
+    document.getElementById('seller-account-pending-copy').textContent = approvalStatus === 'rejected'
+      ? 'Your account was not approved. Contact support if you believe this is an error.'
+      : 'Your account needs approval before you can open a shop or place marketplace orders.';
+    return;
+  }
+  pendingPanel.style.display = 'none';
 
   const onboardForm = document.getElementById('onboard-form');
   if (role === 'buyer') {
+    showSellerWorkspace(false);
     onboard.style.display = 'block';
-    statsEl.style.display = 'none';
-    recentEl.style.display = 'none';
     // Wire the shop creation form once.
     if (!onboardForm.dataset.wired) {
       onboardForm.dataset.wired = 'true';
@@ -109,8 +141,7 @@ window.addEventListener('authstate', async () => {
         if (error) return alert('Could not create shop: ' + error);
         showToast('Shop created! You can now add products.');
         onboard.style.display = 'none';
-        statsEl.style.display = 'grid';
-        recentEl.style.display = 'block';
+        showSellerWorkspace(true);
         loadStats();
         loadRecentOrders();
       });
@@ -118,8 +149,7 @@ window.addEventListener('authstate', async () => {
     return;
   }
   onboard.style.display = 'none';
-  statsEl.style.display = 'grid';
-  recentEl.style.display = 'block';
+  showSellerWorkspace(true);
   loadStats();
   loadRecentOrders();
 });

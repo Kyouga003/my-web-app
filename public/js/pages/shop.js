@@ -125,7 +125,7 @@ async function loadProducts() {
   try {
     let query = supabase
       .from('products')
-      .select('*, product_images(url, is_main), categories(name), shops(name, slug), profiles(display_name)', { count: 'exact' })
+      .select('*, product_images(url, is_main), categories(name), shops(name, slug), profiles:public_profiles(display_name)', { count: 'exact' })
       .eq('status', 'published');
     if (state.q) {
       query = query.or('name.ilike.%' + state.q + '%', 'description.ilike.%' + state.q + '%', 'tags.cs.{"' + state.q + '"}');

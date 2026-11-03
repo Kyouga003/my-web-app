@@ -32,7 +32,7 @@ async function loadShop() {
   contentEl.style.display = 'none';
   const { data, error } = await supabase
     .from('shops')
-    .select('*, profiles(*)')
+    .select('*, profiles:public_profiles(*)')
     .eq('slug', slug)
     .single();
   if (error || !data) {

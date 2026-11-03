@@ -123,6 +123,9 @@ export function renderHeader({ currentPage: page } = {}) {
     '<ul class="mobile-menu" id="mobile-menu"></ul>';
 
   document.body.insertBefore(header, document.body.firstChild);
+  header.querySelector('.nav-list').innerHTML = navLinksHTML(false, 'buyer');
+  header.querySelector('#account-menu-btn').style.display = 'none';
+  header.querySelector('#mobile-menu').innerHTML = mobileMenuHTML(false, 'buyer');
   return header;
 }
 
@@ -168,7 +171,6 @@ export function renderAuthLinks(user, profile) {
     menuBtn.style.display = 'none';
   }
 
-  const mobileMenu = header.querySelector('#mobile-menu');
   mobileMenu.innerHTML = mobileMenuHTML(authed, role);
   mobileMenu.style.display = 'none';
 

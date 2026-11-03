@@ -17,12 +17,22 @@
 </script>
 <div id="setup-banner"></div>
 <div class="container section">
-  <div class="flex-between" style="margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem">
+  <div id="seller-dashboard-header" class="flex-between" style="display:none;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem">
     <h2>Seller dashboard</h2>
     <a href="seller-products.html" class="btn btn-primary">Add a product</a>
   </div>
-  <div id="seller-require-auth" style="display:none; text-align:center; padding: 2rem">
-    <p><a href="login.html?next=seller-dashboard.html">Sign in</a> to access your seller dashboard.</p>
+  <div id="seller-require-auth" class="seller-entry" style="display:none">
+    <h2>Sign in to your maker workspace</h2>
+    <p>Manage your shop, listings, and customer orders from one place.</p>
+    <div class="seller-entry-actions">
+      <a href="login.html?next=seller-dashboard.html" class="btn btn-primary">Sign in</a>
+      <a href="register.html?next=seller-dashboard.html" class="btn btn-outline">Create an account</a>
+    </div>
+  </div>
+  <div id="seller-account-pending" class="seller-entry" style="display:none">
+    <h2>Account review in progress</h2>
+    <p id="seller-account-pending-copy">Your account needs approval before you can open a shop or place marketplace orders.</p>
+    <a href="profile.html" class="btn btn-outline">View your account</a>
   </div>
   <div id="seller-onboard" style="display:none; background:var(--warm-cream); border:1px solid var(--border); border-radius:var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem">
     <h3 style="margin-top:0">Open your shop</h3>
@@ -35,9 +45,9 @@
     </form>
   </div>
   <div id="seller-stats" class="stat-grid" style="margin-bottom:1.5rem"></div>
-  <div class="flex-between" style="margin-bottom:1rem"><h3>Recent orders</h3><a href="seller-orders.html" class="btn-ghost">View all &rarr;</a></div>
+  <div id="seller-order-heading" class="flex-between" style="display:none;margin-bottom:1rem"><h3>Recent orders</h3><a href="seller-orders.html" class="btn-ghost">View all &rarr;</a></div>
   <div id="seller-recent-orders" style="display:none"></div>
-  <div style="margin-top:1.5rem"><h3>Your products</h3><a href="seller-products.html" class="btn btn-outline">Manage products &rarr;</a></div>
+  <div id="seller-products-heading" style="display:none;margin-top:1.5rem"><h3>Your products</h3><a href="seller-products.html" class="btn btn-outline">Manage products &rarr;</a></div>
 </div>
 <script type="module" src="/js/pages/seller-dashboard.js"></script>
 </body>

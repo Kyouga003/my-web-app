@@ -18,8 +18,13 @@
 <div id="setup-banner"></div>
 <div class="container section">
   <h2>Your products</h2>
-  <div id="seller-products-require-auth" style="display:none; text-align:center; padding: 2rem">
-    <p><a href="login.html?next=seller-products.html">Sign in</a> to manage your products.</p>
+  <div id="seller-products-require-auth" class="seller-entry" style="display:none">
+    <h2>Sign in to manage your listings</h2>
+    <p>Open your maker workspace to add products, inventory, and photos.</p>
+    <div class="seller-entry-actions">
+      <a href="login.html?next=seller-products.html" class="btn btn-primary">Sign in</a>
+      <a href="register.html?next=seller-dashboard.html" class="btn btn-outline">Create an account</a>
+    </div>
   </div>
   <div id="seller-products-wrap" style="display:none">
     <a href="#" id="btn-add-product" class="btn btn-primary" style="margin-bottom:1rem">+ Add a product</a>
@@ -33,8 +38,8 @@
     <div class="modal-body">
       <form id="product-form">
         <input type="hidden" id="prod-id">
-        <div class="form-group"><label>Product name</label><input type="text" id="prod-name" class="form-input" required></div>
-        <div class="form-group"><label>Description</label><textarea id="prod-desc" class="form-textarea" required></textarea></div>
+        <div class="form-group"><label>Product name</label><input type="text" id="prod-name" class="form-input"></div>
+        <div class="form-group"><label>Description</label><textarea id="prod-desc" class="form-textarea"></textarea></div>
         <div class="grid grid-cols-2">
           <div class="form-group"><label>Price (USD)</label><input type="number" id="prod-price" class="form-input" step="0.01" min="0" required></div>
           <div class="form-group"><label>Quantity in stock</label><input type="number" id="prod-qty" class="form-input" min="0" value="0" required></div>
@@ -42,15 +47,17 @@
         <div class="form-group"><label>Category</label><select id="prod-category" class="form-select"></select></div>
         <div class="form-group"><label>SKU (optional)</label><input type="text" id="prod-sku" class="form-input"></div>
         <div class="form-group"><label>Tags (comma-separated)</label><input type="text" id="prod-tags" class="form-input" placeholder="ceramics, mug, gift"></div>
-        <div class="form-group"><label>Main image</label><input type="file" id="prod-image" accept="image/*" multiple><p class="form-hint">JPEG/PNG up to 4 MB. Select multiple images for a gallery.</p></div>
+        <div class="form-group"><label>Main image</label><input type="file" id="prod-image" accept="image/jpeg,image/png,image/webp" multiple><p class="form-hint">JPEG, PNG, or WebP up to 4 MB. Select multiple images for a gallery.</p></div>
+          <div id="images-list" class="upload-gallery" aria-live="polite"></div>
         <div class="form-group" style="margin-top:0.75rem">
           <label><input type="checkbox" id="prod-publish"> Publish immediately (leave unchecked to save as draft)</label>
         </div>
+        <p id="prod-save-error" role="alert" aria-live="assertive" style="display:none;color:var(--danger);margin:0 0 0.75rem"></p>
       </form>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
-      <button class="btn btn-primary" id="prod-save">Save product</button>
+      <button class="btn btn-ghost" id="modal-cancel" type="button">Cancel</button>
+      <button class="btn btn-primary" id="prod-save" type="button">Save product</button>
     </div>
   </div>
 </div>

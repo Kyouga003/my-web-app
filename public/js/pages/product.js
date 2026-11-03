@@ -44,7 +44,7 @@ async function loadProduct() {
   if (!supabase || !productId) { notFoundEl.style.display = 'block'; loadingEl.style.display = 'none'; return; }
   const { data, error } = await supabase
     .from('products')
-    .select('*, product_images(*), shops(*), categories(*), profiles(display_name)')
+    .select('*, product_images(*), shops(*), categories(*), profiles:public_profiles(display_name)')
     .eq('id', productId)
     .single();
   if (error || !data) {
@@ -296,7 +296,7 @@ async function updateCartCountBadge() {
 }
 
 async function loadReviews() {
-  const { data } = await supabase.from('reviews').select('*, profiles(display_name, avatar_url)').eq('product_id', productId).order('created_at', { ascending: false });
+  const { data } = await supabase.from('reviews').select('*, profiles:public_profiles(display_name, avatar_url)').eq('product_id', productId).order('created_at', { ascending: false });
   const rows = data || [];
   const el = document.getElementById('product-reviews');
   if (rows.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary)">No reviews yet. Be the first to review this product!</p>'; return; }
@@ -314,7 +314,7 @@ async function loadReviews() {
 }
 
 async function loadRelated(categoryId, shopId, excludeId) {
-  let query = supabase.from('products').select('*, product_images(url, is_main), profiles(display_name)').eq('status', 'published').limit(6);
+  let query = supabase.from('products').select('*, product_images(url, is_main), profiles:public_profiles(display_name)').eq('status', 'published').limit(6);
   if (categoryId) query = query.eq('category_id', categoryId);
   const { data } = await query;
   const rows = (data || []).filter(p => p.id !== excludeId).slice(0, 4);

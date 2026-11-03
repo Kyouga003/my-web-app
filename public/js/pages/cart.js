@@ -108,7 +108,7 @@ function renderCart(rows) {
         </td>\
         <td>' + formatMoney(price, p.currency) + '</td>\
         <td>\
-          ' + (stock <= 0 ? '<span class="product-stock out">—</span>' : '\
+          ' + (stock <= 0 ? '<span class="product-stock out">ï¿½</span>' : '\
             <input type="number" value="' + r.quantity + '" min="1" max="' + stock + '" data-id="' + r.id + '" class="cart-qty form-input" style="width:70px">\
             <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity - 1) + ')" ' + (r.quantity <= 1 ? 'disabled' : '') + '>&minus;</button>\
             <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity + 1) + ')" ' + (stock <= r.quantity ? 'disabled' : '') + '>&plus;</button>\
@@ -137,4 +137,3 @@ window.removeItem = async (itemId) => {
 };
 
 loadDbStatus();
-loadCart();

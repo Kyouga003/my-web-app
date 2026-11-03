@@ -21,12 +21,38 @@
     <p><a href="login.html?next=admin.html">Sign in</a> to access the administration area.</p>
   </div>
   <div id="admin-wrap" style="display:none">
-    <h2>Administration</h2>
+    <div class="admin-heading">
+      <div><p class="product-cat">MARKETPLACE OPERATIONS</p><h2>Administration</h2></div>
+      <span class="badge badge-purple">Private workspace</span>
+    </div>
     <div class="stat-grid" style="margin-bottom:1.5rem">
       <div class="metric-card"><div class="label">Products</div><div class="value" id="admin-products">-</div></div>
       <div class="metric-card"><div class="label">Orders</div><div class="value" id="admin-orders">-</div></div>
       <div class="metric-card"><div class="label">Categories</div><div class="value" id="admin-categories">-</div></div>
       <div class="metric-card"><div class="label">Reports</div><div class="value" id="admin-reports">-</div></div>
+    </div>
+    <div class="admin-review-grid">
+      <section class="admin-review-panel" aria-labelledby="account-queue-title">
+        <div class="admin-panel-heading">
+          <div><p class="product-cat">MEMBERS</p><h3 id="account-queue-title">Account applications</h3></div>
+          <label class="admin-filter-label" for="account-status-filter">View
+            <select id="account-status-filter" class="form-select">
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="all">All accounts</option>
+            </select>
+          </label>
+        </div>
+        <div id="admin-account-list" class="admin-queue-list" aria-live="polite"></div>
+      </section>
+      <section class="admin-review-panel" aria-labelledby="product-queue-title">
+        <div class="admin-panel-heading">
+          <div><p class="product-cat">LISTING SAFETY</p><h3 id="product-queue-title">Product review</h3></div>
+          <span id="pending-product-count" class="badge badge-outline">0 pending</span>
+        </div>
+        <div id="admin-product-queue" class="admin-queue-list" aria-live="polite"></div>
+      </section>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem">

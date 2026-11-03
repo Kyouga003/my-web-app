@@ -48,6 +48,10 @@
             <label>Role</label>
             <span id="profile-role" style="font-size:0.9rem;color:var(--text-secondary)"></span>
           </div>
+          <div class="form-group">
+            <label>Account approval</label>
+            <span id="profile-approval-status" class="badge badge-outline">Loading</span>
+          </div>
           <button type="submit" class="btn btn-primary">Save changes</button>
         </form>
       </div>
@@ -61,6 +65,10 @@
       </div>
       <p class="form-hint">Need to open a shop? <a href="seller-dashboard.html">Start selling</a>.</p>
     </div>
+    <section id="admin-messages" class="admin-messages-panel" aria-labelledby="admin-messages-title">
+      <div class="admin-panel-heading"><div><p class="product-cat">ACCOUNT SUPPORT</p><h3 id="admin-messages-title">Messages from administration</h3></div></div>
+      <div id="admin-messages-list" class="admin-queue-list" aria-live="polite"></div>
+    </section>
   </div>
 </div>
 <script type="module" src="/js/pages/profile.js"></script>
