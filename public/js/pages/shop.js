@@ -127,12 +127,10 @@ async function loadProducts() {
     let query = supabase
       .from('products')
       .select('*, product_images(*), categories(name), shops(name, slug), profiles:public_profiles(display_name)', { count: 'exact' })
-      .eq('status', 'published')
-      .order('created_at', { ascending: false });
+      .or('status.eq.published,status.eq.draft');
     if (state.q) {
       query = query.or('name.ilike.%' + state.q + '%', 'description.ilike.%' + state.q + '%', 'tags.cs.{"' + state.q + '"}');
     }
-    const cat = categories.find(c => c.slug === state.category);
     if (state.category && cat) query = query.eq('category_id', cat.id);
     if (state.min) query = query.gte('price_cents', Math.round(parseFloat(state.min) * 100));
     if (state.max) query = query.lte('price_cents', Math.round(parseFloat(state.max) * 100));
@@ -143,7 +141,10 @@ async function loadProducts() {
     query = query.range(from, from + PAGE_SIZE - 1);
 
     const { data, error, count } = await query;
-    if (error) throw error;
+    if (error) {
+      console.error('Shop error:', error);
+      throw error;
+    }
     const rows = data || [];
     renderActiveFilters();
     if (rows.length === 0) {

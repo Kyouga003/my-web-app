@@ -314,7 +314,7 @@ async function loadReviews() {
 }
 
 async function loadRelated(categoryId, shopId, excludeId) {
-  let query = supabase.from('products').select('*, product_images(*), profiles:public_profiles(display_name)').eq('status', 'published').limit(6);
+  let query = supabase.from('products').select('*, product_images(*), profiles:public_profiles(display_name)').limit(6);
   if (categoryId) query = query.eq('category_id', categoryId);
   const { data } = await query;
   const rows = (data || []).filter(p => p.id !== excludeId).slice(0, 4);

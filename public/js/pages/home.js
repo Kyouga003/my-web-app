@@ -58,7 +58,7 @@ async function loadFeatured() {
     const { data, error } = await supabase
       .from('products')
       .select('*, product_images(*), categories(name), profiles:public_profiles(display_name)')
-      .eq('status', 'published')
+      .or('status.eq.published,status.eq.draft')
       .order('created_at', { ascending: false })
       .limit(8);
     if (error) throw error;
