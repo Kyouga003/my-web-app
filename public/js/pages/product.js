@@ -103,15 +103,14 @@ async function loadProduct() {
   const { currentUser } = await import('/js/init.js');
   const isSoldOut = stock <= 0;
   let html = '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">';
-  html += '<div style="display:flex;align-items:center;gap:0.5rem"><label for="product-qty" style="font-size:0.9rem;color:var(--text-secondary);font-weight:500">Quantity:</label> ';
-  html += '<input type="number" id="product-qty" value="1" min="1" max="' + stock + '" ' + (isSoldOut ? 'disabled' : '') + ' style="width:80px;padding:0.6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text-primary)"> </div>';
+  html += '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:0.4rem"><label for="product-qty" style="font-size:0.9rem;color:var(--text-secondary)">Quantity:</label> ';
+  html += '<input type="number" id="product-qty" value="1" min="1" max="' + stock + '" ' + (isSoldOut ? 'disabled' : '') + ' style="width:70px;padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius)"> </div>';
   if (isSoldOut) {
     html += '<button class="btn btn-ghost" disabled>Sold out</button>';
   } else {
     html += '<button id="product-add-cart" class="btn btn-primary">Add to cart</button> ';
   }
-  html += '<button class="fav-btn" id="product-fav" data-product-id="' + p.id + '" aria-label="Add to favorites" title="Add to favorites"><svg class="fav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>';
-  html += '</div>';
+  html += '<button class="fav-btn" id="product-fav" data-product-id="' + p.id + '" aria-label="Favorite"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button></div>';
   const actionsDiv = document.getElementById('product-actions');
   actionsDiv.innerHTML = html;
   const contactBtn = document.createElement('button');

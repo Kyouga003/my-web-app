@@ -111,7 +111,7 @@ function renderCart(rows) {
           ' + (stock <= 0 ? '<span class="product-stock out">Unavailable</span>' : '\
             <div style="display:flex;align-items:center;gap:0.5rem">\
               <label style="font-size:0.8rem;color:var(--text-secondary)">Qty:</label>\
-              <input type="number" value="' + r.quantity + '" min="1" max="' + stock + '" data-id="' + r.id + '" class="cart-qty form-input" style="width:70px">\
+              <div style="display:flex;align-items:center;gap:0.3rem"><label style="font-size:0.8rem;color:var(--text-secondary)">Qty:</label><input type="number" value="' + r.quantity + '" min="1" max="' + stock + '" data-id="' + r.id + '" class="cart-qty form-input" style="width:60px"></div>\
               <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity - 1) + ')" ' + (r.quantity <= 1 ? 'disabled' : '') + ' aria-label="Decrease quantity">&minus;</button>\
               <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity + 1) + ')" ' + (stock <= r.quantity ? 'disabled' : '') + ' aria-label="Increase quantity">&plus;</button>\
             </div>\
