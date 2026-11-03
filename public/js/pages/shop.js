@@ -92,7 +92,7 @@ function renderFilters() {
 
 function productCard(p) {
   const imgs = p.product_images || [];
-  const main = imgs.find(i => i.is_main) || imgs[0] || {};
+  const main = imgs.find(i => i.is_main && i.url) || imgs.find(i => i.url) || {};
   const imgUrl = main.url || '/images/placeholder.svg';
   const stock = p.quantity == null ? 0 : p.quantity;
   const stockLabel = stock <= 0 ? 'Sold out' : stock === 1 ? 'Only 1 left' : stock + ' available';
@@ -127,7 +127,8 @@ async function loadProducts() {
     let query = supabase
       .from('products')
       .select('*, product_images(*), categories(name), shops(name, slug), profiles:public_profiles(display_name)', { count: 'exact' })
-      .eq('status', 'published');
+      .eq('status', 'published')
+      .order('created_at', { ascending: false });
     if (state.q) {
       query = query.or('name.ilike.%' + state.q + '%', 'description.ilike.%' + state.q + '%', 'tags.cs.{"' + state.q + '"}');
     }

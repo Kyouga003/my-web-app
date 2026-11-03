@@ -87,10 +87,10 @@ async function loadProduct() {
   if (stock <= 0) stockEl.innerHTML = '<div class="product-stock out">Sold out</div>';
   else if (stock <= 3) stockEl.innerHTML = '<div class="product-stock low">Only ' + stock + ' left in stock</div>';
 
-  const images = p.product_images || [];
+  const images = (p.product_images || []).filter(img => img.url);
   const mainEl = document.getElementById('product-gallery-main');
   const thumbEl = document.getElementById('product-gallery-thumbs');
-  const setImg = (url) => { mainEl.innerHTML = '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(p.name) + '" style="width:100%;height:100%;object-fit:cover">;'; };
+  const setImg = (url) => { mainEl.innerHTML = '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(p.name) + '" style="width:100%;height:100%;object-fit:cover" onerror="this.src=\'/images/placeholder.svg\'">'; };
   if (images.length) {
     setImg(images[0].url);
     thumbEl.innerHTML = images.map((img, i) =>
@@ -314,19 +314,20 @@ async function loadReviews() {
 }
 
 async function loadRelated(categoryId, shopId, excludeId) {
-  let query = supabase.from('products').select('*, product_images(url, is_main), profiles:public_profiles(display_name)').eq('status', 'published').limit(6);
+  let query = supabase.from('products').select('*, product_images(*), profiles:public_profiles(display_name)').eq('status', 'published').limit(6);
   if (categoryId) query = query.eq('category_id', categoryId);
   const { data } = await query;
   const rows = (data || []).filter(p => p.id !== excludeId).slice(0, 4);
   const el = document.getElementById('product-related');
   if (rows.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary)">No related products.</p>'; return; }
   el.innerHTML = rows.map(p => {
-    const main = (p.product_images || [])[0];
+    const imgs = p.product_images || [];
+    const main = imgs.find(i => i.is_main && i.url) || imgs.find(i => i.url) || {};
     const stock = p.quantity == null ? 0 : p.quantity;
     return `
       <article class="product-card">
         <div class="product-card-media">
-          <img src="${escapeHtml(main ? main.url : '/images/placeholder.svg')}" alt="${escapeHtml(p.name)}" loading="lazy">
+          <img src="${escapeHtml(main.url || '/images/placeholder.svg')}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.src='/images/placeholder.svg'">
           ${stock <= 0 ? '<span class="badge badge-outline">Sold out</span>' : ''}
         </div>
         <div class="product-card-info">

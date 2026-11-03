@@ -24,7 +24,7 @@ async function loadDbStatus() {
 
 function productCard(p) {
   const imgs = p.product_images || [];
-  const main = imgs.find(i => i.is_main) || imgs[0] || {};
+  const main = imgs.find(i => i.is_main && i.url) || imgs.find(i => i.url) || {};
   const imgUrl = main.url || '/images/placeholder.svg';
   const stock = p.quantity == null ? 0 : p.quantity;
   const stockLabel = stock <= 0 ? 'Sold out' : stock === 1 ? 'Only 1 left' : stock + ' available';
