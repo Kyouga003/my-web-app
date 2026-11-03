@@ -44,7 +44,7 @@ async function loadProduct() {
   if (!supabase || !productId) { notFoundEl.style.display = 'block'; loadingEl.style.display = 'none'; return; }
   const { data, error } = await supabase
     .from('products')
-    .select('*, product_images(*), shops(*), categories(*), profiles:public_profiles(display_name)')
+    .select('*, product_images(*), shops(*)')
     .eq('id', productId)
     .single();
   if (error || !data) {
@@ -314,7 +314,7 @@ async function loadReviews() {
 }
 
 async function loadRelated(categoryId, shopId, excludeId) {
-  let query = supabase.from('products').select('*, product_images(*), profiles:public_profiles(display_name)').limit(6);
+  let query = supabase.from('products').select('*, product_images(*)').limit(6);
   if (categoryId) query = query.eq('category_id', categoryId);
   const { data } = await query;
   const rows = (data || []).filter(p => p.id !== excludeId).slice(0, 4);
