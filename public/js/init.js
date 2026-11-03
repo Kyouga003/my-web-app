@@ -12,7 +12,15 @@ export function initSupabase() {
   if (!createClient || !cfg.url || !cfg.key) {
     console.error('Supabase browser client or configuration is missing.');
     return null;
+:  // Initialize theme
+  const savedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
   }
+  
   supabase = createClient(cfg.url, cfg.key, {
     auth: {
       autoRefreshToken: true,

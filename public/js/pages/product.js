@@ -76,16 +76,15 @@ async function loadProduct() {
   if (p.processing_time) attrs.push({ label: 'Processing time', value: p.processing_time });
   if (p.shipping_info) attrs.push({ label: 'Shipping', value: p.shipping_info });
   const attrEl = document.getElementById('product-attrs');
-  attrEl.innerHTML = attrs.map(a => `
-    <div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border)">
-      <span style="color:var(--text-secondary)">${escapeHtml(a.label)}</span>
-      <span>${escapeHtml(a.value)}</span>
-    </div>`).join('') || '<p style="color:var(--text-secondary)">No additional details provided.</p>';
+  attrEl.innerHTML = attrs.length ? '<h4 style="margin-bottom:0.75rem">Product details</h4>' + attrs.map(a => `
+    <div style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--text-secondary);font-weight:500">${escapeHtml(a.label)}</span>
+      <span style="text-align:right;max-width:60%">${escapeHtml(a.value)}</span>
+    </div>`).join('') : '';
 
-  const stockEl = document.getElementById('product-stock');
-  const stock = p.quantity == null ? 0 : p.quantity;
-  if (stock <= 0) stockEl.innerHTML = '<div class="product-stock out">Sold out</div>';
-  else if (stock <= 3) stockEl.innerHTML = '<div class="product-stock low">Only ' + stock + ' left in stock</div>';
+  if (stock <= 0) stockEl.innerHTML = '<div class="product-stock out" style="color:var(--danger)">Sold out</div>';
+  else if (stock <= 3) stockEl.innerHTML = '<div class="product-stock low" style="color:var(--warning)">Only ' + stock + ' left in stock</div>';
+  else stockEl.innerHTML = '<div class="text-secondary" style="font-size:0.9rem">' + stock + ' in stock</div>';
 
   const images = (p.product_images || []).filter(img => img.url);
   const mainEl = document.getElementById('product-gallery-main');
@@ -103,15 +102,23 @@ async function loadProduct() {
   const actions = document.getElementById('product-actions');
   const { currentUser } = await import('/js/init.js');
   const isSoldOut = stock <= 0;
-  let html = '<label style="font-size:0.9rem;color:var(--text-secondary)">Quantity</label> ';
-  html += '<input type="number" id="product-qty" value="1" min="1" ' + (isSoldOut ? 'disabled' : '') + ' style="width:80px;padding:0.6rem;border:1px solid var(--border);border-radius:var(--radius)"> ';
+  let html = '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">';
+  html += '<div style="display:flex;align-items:center;gap:0.5rem"><label for="product-qty" style="font-size:0.9rem;color:var(--text-secondary);font-weight:500">Quantity:</label> ';
+  html += '<input type="number" id="product-qty" value="1" min="1" max="' + stock + '" ' + (isSoldOut ? 'disabled' : '') + ' style="width:80px;padding:0.6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text-primary)"> </div>';
   if (isSoldOut) {
     html += '<button class="btn btn-ghost" disabled>Sold out</button>';
   } else {
     html += '<button id="product-add-cart" class="btn btn-primary">Add to cart</button> ';
   }
-  html += '<button class="fav-btn" id="product-fav" data-product-id="' + p.id + '" aria-label="Favorite"><svg class="fav-fill" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>';
-  actions.innerHTML = html;
+  html += '<button class="fav-btn" id="product-fav" data-product-id="' + p.id + '" aria-label="Add to favorites" title="Add to favorites"><svg class="fav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>';
+  html += '</div>';
+  const actionsDiv = document.getElementById('product-actions');
+  actionsDiv.innerHTML = html;
+  const contactBtn = document.createElement('button');
+  contactBtn.type = 'button';
+  contactBtn.className = 'btn btn-outline';
+  contactBtn.textContent = 'Contact the seller';
+  actionsDiv.appendChild(contactBtn);
 
   document.getElementById('product-add-cart')?.addEventListener('click', async () => {
     const qty = parseInt(document.getElementById('product-qty').value) || 1;
@@ -230,23 +237,18 @@ async function loadProduct() {
       const { currentUser: u4 } = await import('/js/init.js');
       if (!u4) return;
       const actions = document.getElementById('product-actions');
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn btn-outline btn-sm';
-      btn.style.marginLeft = '0.5rem';
-      btn.textContent = 'Contact the seller';
-      actions.appendChild(btn);
-      const formHtml = '<div id="inquiry-form-wrap" style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-top:1rem;display:none">' +
+      const contactBtn = Array.from(actions.querySelectorAll('button')).find(b => b.textContent.includes('Contact'));
+      if (!contactBtn) return;
+      const formHtml = '<div id="inquiry-form-wrap" style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-top:1.25rem;background:var(--surface-alt);display:none">' +
         '<h4 style="margin-top:0">Message the maker</h4>' +
-        '<div class="form-group"><label>Subject</label><input type="text" id="inquiry-subject" class="form-input" placeholder="Question about materials or personalisation"></div>' +
-        '<div class="form-group"><label>Message</label><textarea id="inquiry-message" class="form-textarea" placeholder="What would you like to ask?" style="min-height:96px"></textarea></div>' +
-        '<button class="btn btn-primary btn-sm" id="inquiry-submit">Send message</button>' +
-        '<button class="btn btn-ghost btn-sm" id="inquiry-cancel">Cancel</button>' +
+        '<div class="form-group"><label for="inquiry-subject">Subject</label><input type="text" id="inquiry-subject" class="form-input" placeholder="Question about materials or personalisation"></div>' +
+        '<div class="form-group"><label for="inquiry-message">Message</label><textarea id="inquiry-message" class="form-textarea" placeholder="What would you like to ask?" style="min-height:96px"></textarea></div>' +
+        '<div style="display:flex;gap:0.75rem;flex-wrap:wrap"><button class="btn btn-primary btn-sm" id="inquiry-submit">Send message</button><button class="btn btn-ghost btn-sm" id="inquiry-cancel">Cancel</button></div>' +
         '<p id="inquiry-message-msg" style="color:var(--danger);font-size:0.85rem;margin-top:0.5rem;display:none"></p>' +
         '</div>';
-      actions.insertAdjacentHTML('afterend', formHtml);
+      contactBtn.parentElement.insertAdjacentHTML('afterend', formHtml);
       const wrap = document.getElementById('inquiry-form-wrap');
-      btn.addEventListener('click', () => { wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none'; });
+      contactBtn.addEventListener('click', () => { wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none'; if (wrap.style.display === 'block') window.scrollTo({ top: wrap.offsetTop - 100, behavior: 'smooth' }); });
       document.getElementById('inquiry-cancel').addEventListener('click', () => { wrap.style.display = 'none'; });
       document.getElementById('inquiry-submit').addEventListener('click', async () => {
         const subject = document.getElementById('inquiry-subject').value.trim();

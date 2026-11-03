@@ -106,22 +106,25 @@ function renderCart(rows) {
             </div>\
           </div>\
         </td>\
-        <td>' + formatMoney(price, p.currency) + '</td>\
+        <td><span class="text-secondary" style="font-size:0.85rem">Unit price: </span>' + formatMoney(price, p.currency) + '</td>\
         <td>\
-          ' + (stock <= 0 ? '<span class="product-stock out">�</span>' : '\
-            <input type="number" value="' + r.quantity + '" min="1" max="' + stock + '" data-id="' + r.id + '" class="cart-qty form-input" style="width:70px">\
-            <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity - 1) + ')" ' + (r.quantity <= 1 ? 'disabled' : '') + '>&minus;</button>\
-            <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity + 1) + ')" ' + (stock <= r.quantity ? 'disabled' : '') + '>&plus;</button>\
+          ' + (stock <= 0 ? '<span class="product-stock out">Unavailable</span>' : '\
+            <div style="display:flex;align-items:center;gap:0.5rem">\
+              <label style="font-size:0.8rem;color:var(--text-secondary)">Qty:</label>\
+              <input type="number" value="' + r.quantity + '" min="1" max="' + stock + '" data-id="' + r.id + '" class="cart-qty form-input" style="width:70px">\
+              <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity - 1) + ')" ' + (r.quantity <= 1 ? 'disabled' : '') + ' aria-label="Decrease quantity">&minus;</button>\
+              <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity + 1) + ')" ' + (stock <= r.quantity ? 'disabled' : '') + ' aria-label="Increase quantity">&plus;</button>\
+            </div>\
           ') + '\
         </td>\
-        <td>' + formatMoney(line, p.currency) + '</td>\
+        <td><span class="text-secondary" style="font-size:0.85rem">Line total: </span>' + formatMoney(line, p.currency) + '</td>\
         <td><button class="btn-ghost btn-sm" onclick="removeItem(' + JSON.stringify(r.id) + ')" style="color:var(--danger)">Remove</button></td>\
       </tr>';
   });
   html += '</tbody></table></div>';
   itemsWrap.innerHTML = html;
-  subtotalEl.textContent = formatMoney(subtotal, rows[0].products.currency || 'USD');
-  totalEl.textContent = formatMoney(subtotal, rows[0].products.currency || 'USD');
+  subtotalEl.innerHTML = '<span style="color:var(--text-secondary)">Subtotal (' + rows.reduce((s, r) => s + r.quantity, 0) + ' item' + (rows.reduce((s, r) => s + r.quantity, 0) !== 1 ? 's' : '') + '): </span>' + formatMoney(subtotal, rows[0].products.currency || 'USD');
+  totalEl.innerHTML = '<span style="font-weight:700">Total: </span>' + formatMoney(subtotal, rows[0].products.currency || 'USD');
   updateCartCount(rows.reduce((s, r) => s + r.quantity, 0));
 }
 

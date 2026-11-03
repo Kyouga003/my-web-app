@@ -59,9 +59,7 @@ async function loadShop() {
   permalink.href = window.location.href;
   permalink.textContent = window.location.href;
 
-  const banner = document.getElementById('shop-banner-img');
-  if (shop.banner_url) banner.innerHTML = '<img src="' + escapeHtml(shop.banner_url) + '" style="width:100%;height:320px;object-fit:cover;border-radius:var(--radius)" alt="">';
-  document.getElementById('shop-banner').innerHTML = '<div style="padding:1rem;background:var(--soft-lilac);border-radius:var(--radius)">Shop: <code>'+ escapeHtml(shop.slug) +'</code></div>';
+  banner.innerHTML = '<div style="padding:1.5rem;background:var(--pale-lilac);border-radius:var(--radius-lg);border:1px solid var(--border)"><h1 style="margin:0">' + escapeHtml(shop.name) + '</h1><p style="margin:0.5rem 0 0;color:var(--text-secondary)">by ' + escapeHtml(shop.profiles?.display_name || 'A maker') + '</p></div>';
 
   const { data: products } = await supabase
     .from('products')

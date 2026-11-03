@@ -106,6 +106,7 @@ export function renderHeader({ currentPage: page } = {}) {
     '</a>' +
     '<ul class="nav-list" aria-label="Main navigation"></ul>' +
     '<div class="nav-actions">' +
+    '<button id="theme-toggle" class="btn-ghost" style="padding:0.4rem;border:none;display:flex;align-items:center;justify-content:center" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>' +
     '<a href="cart.html" class="cart-badge" aria-label="Shopping cart" style="position:relative;display:flex;align-items:center">' +
     '<svg class="cart-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
     '<circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>' +
@@ -126,6 +127,18 @@ export function renderHeader({ currentPage: page } = {}) {
   header.querySelector('.nav-list').innerHTML = navLinksHTML(false, 'buyer');
   header.querySelector('#account-menu-btn').style.display = 'none';
   header.querySelector('#mobile-menu').innerHTML = mobileMenuHTML(false, 'buyer');
+  
+  // Theme toggle
+  const themeToggle = header.querySelector('#theme-toggle');
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+  themeToggle.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+  themeToggle.addEventListener('click', () => {
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+  });
+  
   return header;
 }
 
