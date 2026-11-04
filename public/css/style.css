@@ -86,58 +86,6 @@
   --container-narrow: 1024px;
 }
 
-/* Dark mode theme */
-[data-theme="dark"] {
-  /* Primary brand colors (same but adjusted for contrast) */
-  --brand-purple: #8B7BFF;
-  --brand-purple-hover: #9B8BFF;
-  --brand-purple-active: #7B6BFF;
-  --deep-purple: #B8A3E8;
-  --rich-plum: #D4B8E8;
-  --secondary-purple: #A08BFF;
-  
-  /* Accent colors */
-  --soft-lavender: #2A1F4A;
-  --pale-lilac: #1F1A2E;
-  --lavender-bg: #15121F;
-  
-  /* Neutrals & warm tones */
-  --warm-cream: #1A1612;
-  --warm-beige: #2A241E;
-  --ivory: #14100C;
-  --white: #0F0D14;
-  
-  /* Text colors */
-  --text-primary: #E8E1EF;
-  --text-secondary: #B8B0C8;
-  --text-tertiary: #8B849A;
-  --text-on-purple: #FFFFFF;
-  
-  /* Borders & surfaces */
-  --border: #2A2438;
-  --border-light: #1F1A2E;
-  --border-hover: #3A3448;
-  --surface: #14121A;
-  --surface-alt: #1A1822;
-  --surface-cream: #161210;
-  
-  /* Status colors */
-  --success: #6BB89A;
-  --success-bg: #1A2F26;
-  --warning: #D89A4A;
-  --warning-bg: #2F241A;
-  --danger: #D86A6A;
-  --danger-bg: #2F1A1A;
-  
-  /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -2px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -4px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 8px 10px -6px rgba(0, 0, 0, 0.7);
-  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
-}
-
 /* Reset & base */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -154,7 +102,6 @@ body {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color var(--transition), color var(--transition);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -185,30 +132,17 @@ ul, ol { margin: 0 0 1rem 1.25rem; }
   overflow: hidden; clip: rect(0 0 0 0); border: 0;
 }
 
-/* Global spacing improvements */
+/* Layout */
 .container {
   width: 100%;
   max-width: var(--container);
   margin-left: auto;
   margin-right: auto;
-  padding-left: var(--space-8);
-  padding-right: var(--space-8);
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
 }
 
-.section {
-  padding: var(--space-24) 0;
-}
-
-@media (max-width: 640px) {
-  .container {
-    padding-left: var(--space-6);
-    padding-right: var(--space-6);
-  }
-  
-  .section {
-    padding: var(--space-20) 0;
-  }
-}
+.section { padding-block: var(--spacing-lg); }
 /* Header & navigation */
 .site-header {
   position: sticky;
