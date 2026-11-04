@@ -121,10 +121,6 @@ function wireFavButtons() {
     };
   });
 }
-    };
-  });
-}
-
 window.addEventListener('authstate', async () => {
   const { currentUser } = await import('/js/init.js');
   const prof = currentUser ? await supabase.from('profiles').select('role,display_name').eq('id', currentUser.id).maybeSingle() : null;
