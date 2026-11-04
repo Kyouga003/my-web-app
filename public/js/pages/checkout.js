@@ -70,12 +70,12 @@ async function loadCart() {
   rows.forEach(r => {
     const p = r.products;
     if (p.status !== 'published' || (p.quantity || 0) < r.quantity) {
-      html += '<div style="color:var(--danger);font-size:0.9rem;margin-bottom:0.5rem">' + escapeHtml(p.name) + ' (Qty: ' + r.quantity + ') is no longer available. Please update your cart.</div>';
+      html += '<div style="color:var(--danger);font-size:0.9rem;margin-bottom:0.5rem">' + escapeHtml(p.name) + ' (Quantity: ' + r.quantity + ') is no longer available. Please update your cart.</div>';
       return;
     }
     total += p.price_cents * r.quantity;
     html += '<div class="flex" style="justify-content:space-between;margin-bottom:0.75rem;font-size:0.9rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">' +
-      '<div><div style="font-weight:500">' + escapeHtml(p.name) + '</div><div class="text-secondary" style="font-size:0.8rem">Qty: ' + r.quantity + ' × ' + formatMoney(p.price_cents, p.currency) + '</div></div>' +
+      '<div><div style="font-weight:500">' + escapeHtml(p.name) + '</div><div class="text-secondary" style="font-size:0.8rem">Quantity: ' + r.quantity + ' × ' + formatMoney(p.price_cents, p.currency) + '</div></div>' +
       '<span style="font-weight:600">' + formatMoney(p.price_cents * r.quantity, p.currency) + '</span></div>';
   });
   itemsEl.innerHTML = html;
