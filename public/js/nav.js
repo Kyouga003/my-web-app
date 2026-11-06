@@ -100,9 +100,9 @@ export function renderHeader({ currentPage: page } = {}) {
   header.className = 'site-header';
   header.innerHTML =
     '<div class="header-inner">' +
-    '<a href="index.html" class="brand" aria-label="YouMadeIt home">' +
-    '<img src="/images/YouMadeIt!.png" alt="YouMadeIt" class="brand-logo" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\'">' +
-    '<span class="brand-fallback" style="display:none"><span class="brand-mark" aria-hidden="true">&#10027;</span><span>YouMadeIt</span></span>' +
+    '<a href="index.html" class="brand">' +
+    '<span class="brand-mark" aria-hidden="true">&#10027;</span>' +
+    '<span>YouMadeIt</span>' +
     '</a>' +
     '<ul class="nav-list" aria-label="Main navigation"></ul>' +
     '<div class="nav-actions">' +
@@ -135,6 +135,7 @@ export function renderAuthLinks(user, profile) {
   const role = (profile && profile.role) ? profile.role : 'buyer';
   const authed = !!user;
   let dropdownOpen = false;
+  injectFooterCornerLogo();
 
   const navList = header.querySelector('.nav-list');
   if (navList) navList.innerHTML = navLinksHTML(authed, role);
@@ -202,6 +203,20 @@ export function renderAuthLinks(user, profile) {
     mobileBtn.setAttribute('aria-expanded', 'false');
   });
   navList.addEventListener('click', (e) => e.stopPropagation());
+}
+
+function injectFooterCornerLogo() {
+  const name = (location.pathname.split('/').pop() || '').toLowerCase();
+  if (name === 'index.html' || name === '') return; // home handled in markup
+  const bottom = document.querySelector('.site-footer .footer-bottom');
+  if (!bottom || bottom.querySelector('.footer-corner-logo')) return;
+  const img = document.createElement('img');
+  img.src = '/images/YouMadeIt_-removebg-preview.png';
+  img.alt = '';
+  img.className = 'footer-corner-logo';
+  img.setAttribute('aria-hidden', 'true');
+  img.loading = 'lazy';
+  bottom.appendChild(img);
 }
 
 export async function refreshCartCount() {
