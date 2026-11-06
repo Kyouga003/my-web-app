@@ -23,7 +23,25 @@
   </div>
   <div id="seller-orders-wrap" style="display:none">
     <div id="orders-loading" class="loading-state" style="text-align:center"><div class="skeleton-lg"></div></div>
-    <div id="orders-table-wrap" class="table-wrap"></div>
+    <div class="content-box" id="orders-content-box" style="display:none">
+      <div class="list-toolbar">
+        <div class="list-toolbar-left"><span class="text-secondary" style="font-size:0.875rem">Orders for your shop</span></div>
+        <div class="list-toolbar-right">
+          <div class="sort-control">
+            <label for="seller-orders-sort">Sort</label>
+            <select id="seller-orders-sort" class="form-select">
+              <option value="date-desc">Date: newest</option>
+              <option value="date-asc">Date: oldest</option>
+              <option value="total-desc">Total: high to low</option>
+              <option value="total-asc">Total: low to high</option>
+              <option value="alpha-asc">Order #: A–Z</option>
+              <option value="alpha-desc">Order #: Z–A</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div id="orders-table-wrap" class="table-wrap"></div>
+    </div>
   </div>
 </div>
 <div class="backdrop" id="ship-modal" style="display:none">

@@ -23,18 +23,35 @@
       <a href="seller-dashboard.html" class="btn btn-outline btn-sm">Start selling &rarr;</a>
     </div>
   </div>
-  <form id="search-form" class="flex" style="margin-bottom: 1.5rem">
-    <input type="search" id="search-q" name="q" class="form-input flex-1" placeholder="Search products, makers, materials…">
-    <button type="submit" class="btn btn-primary">Search</button>
-    <a href="shop.html" class="btn-ghost" style="margin-left:0.5rem">Clear</a>
-  </form>
-  <aside id="filters-panel" style="display:none; background:var(--warm-beige); padding:1rem; border-radius:var(--radius); border:1px solid var(--border); margin-bottom:1.5rem">
+  <div class="list-toolbar">
+    <div class="list-toolbar-left">
+      <form id="search-form" class="flex" style="margin:0">
+        <input type="search" id="search-q" name="q" class="form-input" placeholder="Search products, makers, materials…" style="min-width:min(320px,70vw)">
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a href="shop.html" class="btn btn-ghost">Clear</a>
+      </form>
+    </div>
+    <div class="list-toolbar-right">
+      <button id="toggle-filters" type="button" class="btn btn-outline btn-sm">Filters</button>
+      <div class="sort-control">
+        <label for="shop-sort">Sort</label>
+        <select id="shop-sort" class="form-select">
+          <option value="newest">Date added: newest</option>
+          <option value="oldest">Date added: oldest</option>
+          <option value="alpha-asc">Alphabetical: A–Z</option>
+          <option value="alpha-desc">Alphabetical: Z–A</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <aside id="filters-panel" class="content-box" style="display:none; margin-bottom:1.5rem">
     <h3 style="margin-top:0">Filters</h3>
     <div id="filters-content"></div>
-    <button id="apply-filters" class="btn btn-primary btn-block" style="margin-top:0.75rem">Apply filters</button>
-    <button id="reset-filters" class="btn btn-ghost btn-block" style="margin-top:0.5rem">Reset</button>
+    <button id="apply-filters" type="button" class="btn btn-primary btn-block" style="margin-top:0.75rem">Apply filters</button>
+    <button id="reset-filters" type="button" class="btn btn-ghost btn-block" style="margin-top:0.5rem">Reset</button>
   </aside>
-  <button id="toggle-filters" class="btn btn-outline btn-sm">Filters</button>
   <div id="active-filters" style="margin-bottom:1rem; display:none;"></div>
   <div id="shop-grid" class="grid grid-cols-4"></div>
   <div id="shop-pagination" class="flex-between" style="margin-top:1.5rem"></div>

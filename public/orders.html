@@ -23,8 +23,26 @@
     <p><a href="login.html?next=orders.html">Sign in</a> to see your orders.</p>
   </div>
   <div id="orders-loading" class="loading-state" style="text-align:center"><div class="skeleton-lg"></div></div>
-  <div id="orders-list" style="display:none"></div>
-  <div id="orders-detail" style="display:none"></div>
+  <div class="content-box" id="orders-content-box" style="display:none">
+    <div class="list-toolbar">
+      <div class="list-toolbar-left"><span class="text-secondary" style="font-size:0.875rem">Order history</span></div>
+      <div class="list-toolbar-right">
+        <div class="sort-control">
+          <label for="orders-sort">Sort</label>
+          <select id="orders-sort" class="form-select">
+            <option value="date-desc">Date: newest</option>
+            <option value="date-asc">Date: oldest</option>
+            <option value="total-desc">Total: high to low</option>
+            <option value="total-asc">Total: low to high</option>
+            <option value="alpha-asc">Order #: A–Z</option>
+            <option value="alpha-desc">Order #: Z–A</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="orders-list"></div>
+  </div>
+  <div id="orders-detail" class="content-box" style="display:none"></div>
 </div>
 <script type="module" src="/js/pages/orders.js"></script>
 </body>

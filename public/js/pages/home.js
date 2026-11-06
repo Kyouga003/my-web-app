@@ -6,6 +6,10 @@ import { renderAuthLinks, updateCartCount } from '/js/nav.js';
 const featuredGrid = document.getElementById('featured-grid');
 const categoryGrid = document.getElementById('category-grid');
 const setupBanner = document.getElementById('setup-banner');
+const featuredSort = document.getElementById('featured-sort');
+const categorySort = document.getElementById('category-sort');
+let featuredRows = [];
+let categoryRows = [];
 
 function showSetup(message) {
   setupBanner.innerHTML = '<strong>Setup needed:</strong> ' + escapeHtml(message) +
@@ -20,6 +24,37 @@ async function loadDbStatus() {
     const missing = Object.entries(status).filter(([, v]) => !v.exists).map(([k]) => k);
     if (missing.length) showSetup('Database tables not found: ' + missing.join(', '));
   } catch (_) {}
+}
+
+function compareValues(a, b, key, dir) {
+  let av = a[key], bv = b[key];
+  if (key === 'created_at') { av = av ? new Date(av).getTime() : 0; bv = bv ? new Date(bv).getTime() : 0; }
+  if (typeof av === 'string') av = av.toLowerCase();
+  if (typeof bv === 'string') bv = bv.toLowerCase();
+  if (av == null && bv == null) return 0;
+  if (av == null) return 1;
+  if (bv == null) return -1;
+  return (av < bv ? -1 : av > bv ? 1 : 0) * dir;
+}
+
+function sortProducts(rows, mode) {
+  const list = rows.slice();
+  if (mode === 'oldest') list.sort((a, b) => compareValues(a, b, 'created_at', 1));
+  else if (mode === 'alpha-asc') list.sort((a, b) => compareValues(a, b, 'name', 1));
+  else if (mode === 'alpha-desc') list.sort((a, b) => compareValues(a, b, 'name', -1));
+  else if (mode === 'price-asc') list.sort((a, b) => compareValues(a, b, 'price_cents', 1));
+  else if (mode === 'price-desc') list.sort((a, b) => compareValues(a, b, 'price_cents', -1));
+  else list.sort((a, b) => compareValues(a, b, 'created_at', -1));
+  return list;
+}
+
+function sortCategories(rows, mode) {
+  const list = rows.slice();
+  if (mode === 'oldest') list.sort((a, b) => compareValues(a, b, 'created_at', 1));
+  else if (mode === 'newest') list.sort((a, b) => compareValues(a, b, 'created_at', -1));
+  else if (mode === 'alpha-desc') list.sort((a, b) => compareValues(a, b, 'name', -1));
+  else list.sort((a, b) => compareValues(a, b, 'name', 1));
+  return list;
 }
 
 function productCard(p) {
@@ -46,11 +81,20 @@ function productCard(p) {
         <p class="product-card-seller">Handcrafted</p>
         <div class="product-card-bottom">
           <div class="product-price">${formatMoney(p.price_cents, p.currency)}</div>
-          ${stock > 0 ? `<a href="product.html?id=${p.id}" class="product-card-link">View Details →</a>` : `<span class="product-stock">Out of Stock</span>`}
+          ${stock > 0 ? `<a href="product.html?id=${p.id}" class="product-card-link">View Details</a>` : `<span class="product-stock">Out of Stock</span>`}
         </div>
       </div>
     </article>
   `;
+}
+
+function renderFeatured() {
+  if (featuredRows.length === 0) {
+    featuredGrid.innerHTML = '<div class="empty-state"><h2>No listings yet</h2><p>Be the first to share your handmade creations.</p><a href="seller-dashboard.html" class="btn btn-primary" style="margin-top:1rem">Start Selling</a></div>';
+  } else {
+    featuredGrid.innerHTML = sortProducts(featuredRows, featuredSort?.value || 'newest').map(productCard).join('');
+    wireFavButtons();
+  }
 }
 
 async function loadFeatured() {
@@ -63,15 +107,29 @@ async function loadFeatured() {
       .order('created_at', { ascending: false })
       .limit(8);
     if (error) throw error;
-    const rows = data || [];
-    if (rows.length === 0) {
-      featuredGrid.innerHTML = '<div class="empty-state"><h2>No listings yet</h2><p>Be the first to share your handmade creations.</p><a href="seller-dashboard.html" class="btn btn-primary" style="margin-top:1rem">Start Selling</a></div>';
-    } else {
-      featuredGrid.innerHTML = rows.map(productCard).join('');
-      wireFavButtons();
-    }
+    featuredRows = data || [];
+    renderFeatured();
   } catch (err) {
     featuredGrid.innerHTML = '<div class="empty-state"><h2>Unable to load products</h2><p>' + escapeHtml(err.message) + '</p></div>';
+  }
+}
+
+function renderCategories() {
+  if (categoryRows.length === 0) {
+    categoryGrid.innerHTML = '<div class="empty-state"><p>Categories coming soon.</p></div>';
+  } else {
+    categoryGrid.innerHTML = sortCategories(categoryRows, categorySort?.value || 'alpha-asc').map(c => `
+      <a href="shop.html?category=${encodeURIComponent(c.slug)}" class="category-card">
+        <div class="category-card-icon">🎨</div>
+        <div class="category-card-content">
+          <h3>${escapeHtml(c.name)}</h3>
+          <p>${escapeHtml(c.description || 'Explore handmade items')}</p>
+        </div>
+        <svg class="category-card-arrow" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M7.5 15L12.5 10L7.5 5"/>
+        </svg>
+      </a>
+    `).join('');
   }
 }
 
@@ -80,27 +138,15 @@ async function loadCategories() {
   try {
     const { data, error } = await supabase.from('categories').select('*').order('name').limit(8);
     if (error) throw error;
-    const rows = data || [];
-    if (rows.length === 0) {
-      categoryGrid.innerHTML = '<div class="empty-state"><p>Categories coming soon.</p></div>';
-    } else {
-      categoryGrid.innerHTML = rows.map(c => `
-        <a href="shop.html?category=${encodeURIComponent(c.slug)}" class="category-card">
-          <div class="category-card-icon">🎨</div>
-          <div class="category-card-content">
-            <h3>${escapeHtml(c.name)}</h3>
-            <p>${escapeHtml(c.description || 'Explore handmade items')}</p>
-          </div>
-          <svg class="category-card-arrow" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M7.5 15L12.5 10L7.5 5"/>
-          </svg>
-        </a>
-      `).join('');
-    }
+    categoryRows = data || [];
+    renderCategories();
   } catch (err) {
     categoryGrid.innerHTML = '';
   }
 }
+
+if (featuredSort) featuredSort.addEventListener('change', renderFeatured);
+if (categorySort) categorySort.addEventListener('change', renderCategories);
 
 function wireFavButtons() {
   document.querySelectorAll('.fav-btn').forEach(btn => {

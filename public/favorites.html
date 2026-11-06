@@ -23,7 +23,25 @@
   </div>
   <div id="fav-loading" class="loading-state" style="text-align:center"><div class="skeleton-lg"></div></div>
   <div id="fav-empty" class="empty-state" style="display:none"><h2>No favorites yet</h2><p><a href="shop.html" class="btn btn-primary">Browse handmade goods</a></p></div>
-  <div id="fav-grid" class="grid grid-cols-4" style="display:none"></div>
+  <div class="content-box" id="fav-content-box" style="display:none">
+    <div class="list-toolbar">
+      <div class="list-toolbar-left"><span class="text-secondary" style="font-size:0.875rem">Saved items</span></div>
+      <div class="list-toolbar-right">
+        <div class="sort-control">
+          <label for="fav-sort">Sort</label>
+          <select id="fav-sort" class="form-select">
+            <option value="saved-desc">Date saved: newest</option>
+            <option value="saved-asc">Date saved: oldest</option>
+            <option value="alpha-asc">Alphabetical: A–Z</option>
+            <option value="alpha-desc">Alphabetical: Z–A</option>
+            <option value="price-asc">Price: low to high</option>
+            <option value="price-desc">Price: high to low</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="fav-grid" class="favorites-grid"></div>
+  </div>
 </div>
 <script type="module" src="/js/pages/favorites.js"></script>
 </body>

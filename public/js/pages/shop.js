@@ -20,6 +20,7 @@ let state = {
   q: '', category: '', min: '', max: '', availability: 'all', sort: 'newest', page: 1
 };
 let categories = [];
+const shopSort = document.getElementById('shop-sort');
 
 function paramsFromState() {
   const p = new URLSearchParams();
@@ -43,6 +44,7 @@ function readParams() {
   state.sort = p.get('sort') || 'newest';
   state.page = parseInt(p.get('page')) || 1;
   qInput.value = state.q;
+  if (shopSort) shopSort.value = state.sort;
 }
 
 function showSetup(message) {
@@ -80,14 +82,16 @@ function renderFilters() {
   html += '<div class="form-group"><label>Availability</label><select id="f-availability" class="form-select">' +
     '<option value="all">Any</option><option value="available">In stock</option><option value="made-to-order">Made to order</option></select></div>';
   html += '<div class="form-group"><label>Sort by</label><select id="f-sort" class="form-select">' +
-    '<option value="newest">Newest arrivals</option><option value="price-asc">Price: low to high</option>' +
-    '<option value="price-desc">Price: high to low</option></select></div>';
+    '<option value="newest">Date added: newest first</option><option value="oldest">Date added: oldest first</option>' +
+    '<option value="alpha-asc">Alphabetical: A–Z</option><option value="alpha-desc">Alphabetical: Z–A</option>' +
+    '<option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option></select></div>';
   filtersContent.innerHTML = html;
   document.getElementById('f-category').value = state.category;
   document.getElementById('f-min').value = state.min;
   document.getElementById('f-max').value = state.max;
   document.getElementById('f-availability').value = state.availability;
   document.getElementById('f-sort').value = state.sort;
+  if (shopSort) shopSort.value = state.sort;
 }
 
 function productCard(p) {
@@ -130,15 +134,21 @@ async function loadProducts() {
   try {
     let query = supabase
       .from('products')
-      .select('*, product_images(*), categories(name), shops(name, slug)', { count: 'exact' });
+      .select('*, product_images(*), categories(name,slug), shops(name, slug)', { count: 'exact' });
     if (state.q) {
       query = query.or('name.ilike.%' + state.q + '%', 'description.ilike.%' + state.q + '%', 'tags.cs.{"' + state.q + '"}');
     }
-    if (state.category && cat) query = query.eq('category_id', cat.id);
+    if (state.category) {
+      const cat = categories.find(c => c.slug === state.category);
+      if (cat) query = query.eq('category_id', cat.id);
+    }
     if (state.min) query = query.gte('price_cents', Math.round(parseFloat(state.min) * 100));
     if (state.max) query = query.lte('price_cents', Math.round(parseFloat(state.max) * 100));
     if (state.sort === 'price-asc') query = query.order('price_cents', { ascending: true });
     else if (state.sort === 'price-desc') query = query.order('price_cents', { ascending: false });
+    else if (state.sort === 'alpha-asc') query = query.order('name', { ascending: true });
+    else if (state.sort === 'alpha-desc') query = query.order('name', { ascending: false });
+    else if (state.sort === 'oldest') query = query.order('created_at', { ascending: true });
     else query = query.order('created_at', { ascending: false });
     const from = (state.page - 1) * PAGE_SIZE;
     query = query.range(from, from + PAGE_SIZE - 1);
@@ -181,7 +191,7 @@ function renderActiveFilters() {
 function renderPagination(total) {
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
   if (totalPages <= 1) { paginationEl.innerHTML = ''; return; }
-  const p = (n) => { state.page = n; loadProducts(); window.history.pushState(null, '', '?' + paramsFromState().toString()); };
+  window.p = (n) => { state.page = n; loadProducts(); window.history.pushState(null, '', '?' + paramsFromState().toString()); };
   let html = '<span>Page ' + state.page + ' of ' + totalPages + '</span> ';
   if (state.page > 1) html += '<button class="btn-ghost" onclick="p(' + (state.page - 1) + ')">&larr; Prev</button>';
   if (state.page < totalPages) html += '<button class="btn-ghost" onclick="p(' + (state.page + 1) + ')">Next &rarr;</button>';
@@ -226,6 +236,14 @@ window.addEventListener('authstate', async () => {
 
 // Wire UI
 toggleFilters.addEventListener('click', () => { filtersPanel.style.display = filtersPanel.style.display === 'none' ? 'block' : 'none'; });
+if (shopSort) shopSort.addEventListener('change', () => {
+  state.sort = shopSort.value;
+  state.page = 1;
+  const fSort = document.getElementById('f-sort');
+  if (fSort) fSort.value = state.sort;
+  window.history.pushState(null, '', '?' + paramsFromState().toString());
+  loadProducts();
+});
 applyFilters.addEventListener('click', () => {
   state.category = document.getElementById('f-category').value;
   state.min = document.getElementById('f-min').value;
@@ -233,6 +251,7 @@ applyFilters.addEventListener('click', () => {
   state.availability = document.getElementById('f-availability').value;
   state.sort = document.getElementById('f-sort').value;
   state.page = 1;
+  if (shopSort) shopSort.value = state.sort;
   filtersPanel.style.display = 'none';
   window.history.pushState(null, '', '?' + paramsFromState().toString());
   loadProducts();
@@ -240,6 +259,7 @@ applyFilters.addEventListener('click', () => {
 resetFilters.addEventListener('click', () => {
   state = { q: '', category: '', min: '', max: '', availability: 'all', sort: 'newest', page: 1 };
   qInput.value = '';
+  if (shopSort) shopSort.value = state.sort;
   renderFilters();
   window.history.replaceState(null, '', '/shop.html');
   loadProducts();

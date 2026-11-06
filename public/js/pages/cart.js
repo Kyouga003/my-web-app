@@ -13,6 +13,38 @@ const loadingEl = document.getElementById('cart-loading');
 const requireLoginEl = document.getElementById('cart-require-login');
 const subtotalEl = document.getElementById('cart-subtotal');
 const totalEl = document.getElementById('cart-total');
+const contentBox = document.getElementById('cart-content-box');
+const sortSelect = document.getElementById('cart-sort');
+let cartRows = [];
+
+function cmp(a, b, key, dir) {
+  let av = a[key], bv = b[key];
+  if (key === 'created_at') { av = av ? new Date(av).getTime() : 0; bv = bv ? new Date(bv).getTime() : 0; }
+  if (typeof av === 'string') av = av.toLowerCase();
+  if (typeof bv === 'string') bv = bv.toLowerCase();
+  if (av == null && bv == null) return 0;
+  if (av == null) return 1;
+  if (bv == null) return -1;
+  return (av < bv ? -1 : av > bv ? 1 : 0) * dir;
+}
+
+function sortedCart(rows, mode) {
+  const list = rows.map(r => ({
+    ...r,
+    _name: r.products?.name || '',
+    _price: r.products?.price_cents || 0,
+    _qty: r.quantity || 0,
+    _added: r.created_at || r.id || ''
+  }));
+  if (mode === 'added-asc') list.sort((a,b)=>cmp(a,b,'_added',1));
+  else if (mode === 'alpha-asc') list.sort((a,b)=>cmp(a,b,'_name',1));
+  else if (mode === 'alpha-desc') list.sort((a,b)=>cmp(a,b,'_name',-1));
+  else if (mode === 'price-asc') list.sort((a,b)=>cmp(a,b,'_price',1));
+  else if (mode === 'price-desc') list.sort((a,b)=>cmp(a,b,'_price',-1));
+  else if (mode === 'qty-desc') list.sort((a,b)=>cmp(a,b,'_qty',-1));
+  else list.sort((a,b)=>cmp(a,b,'_added',-1));
+  return list;
+}
 
 function showSetup(message) {
   const b = document.getElementById('setup-banner');
@@ -36,6 +68,8 @@ window.addEventListener('authstate', async () => {
   if (!currentUser) {
     requireLoginEl.style.display = 'block';
     loadingEl.style.display = 'none';
+    if (contentBox) contentBox.style.display = 'none';
+    summary.style.display = 'none';
     updateCartCount(0);
     return;
   }
@@ -60,9 +94,9 @@ async function loadCart() {
     .from('cart_items')
     .select('*, products(*, product_images(url, is_main), shops(name))')
     .eq('cart_id', cartId);
-  const rows = items || [];
-  renderCart(rows);
-  if (addOnLoad && rows.findIndex((r) => r.product_id === addOnLoad) < 0) {
+  cartRows = items || [];
+  renderCart(cartRows);
+  if (addOnLoad && cartRows.findIndex((r) => r.product_id === addOnLoad) < 0) {
     const { data: prod } = await supabase.from('products').select('quantity,status').eq('id', addOnLoad).single();
     if (prod && prod.status === 'published' && (prod.quantity || 0) > 0) {
       await supabase.from('cart_items').insert([{ cart_id: cartId, product_id: addOnLoad, quantity: 1 }]);
@@ -78,55 +112,63 @@ function renderCart(rows) {
   if (rows.length === 0) {
     emptyEl.style.display = 'block';
     summary.style.display = 'none';
-    itemsWrap.style.display = 'none';
+    if (contentBox) contentBox.style.display = 'none';
     updateCartCount(0);
     return;
   }
   emptyEl.style.display = 'none';
-  itemsWrap.style.display = 'block';
+  if (contentBox) contentBox.style.display = 'block';
   summary.style.display = 'block';
+  const display = sortedCart(rows, sortSelect?.value || 'added-desc');
   let subtotal = 0;
-  let html = '<div class="table-wrap"><table><thead><tr><th style="width:44%">Product</th><th style="width:14%">Price</th><th style="width:14%">Qty</th><th style="width:14%">Subtotal</th><th style="width:14%"></th></tr></thead><tbody>';
-  rows.forEach((r) => {
-    const p = r.products;
-    const img = (p.product_images || [])[0];
-    const price = p.price_cents;
-    const line = price * r.quantity;
+  let html = '<div class="cart-list">';
+  display.forEach((r) => {
+    const p = r.products || {};
+    const imgs = p.product_images || [];
+    const img = imgs.find(i => i.is_main) || imgs[0];
+    const price = p.price_cents || 0;
+    const line = price * (r.quantity || 0);
     subtotal += line;
     const stock = p.quantity == null ? 0 : p.quantity;
-    html += '\
-      <tr>\
-        <td>\
-          <div class="flex" style="align-items:center">\
-            <img src="' + escapeHtml(img ? img.url : '/images/placeholder.svg') + '" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">\
-            <div>\
-              <div style="font-weight:600">' + escapeHtml(p.name) + '</div>\
-              <div class="text-secondary" style="font-size:0.85rem">by ' + escapeHtml(p.shops?.name || 'a maker') + '</div>\
-              ' + (stock <= 0 ? '<div class="product-stock out" style="font-size:0.8rem">Sold out</div>' : '') + '\
-            </div>\
-          </div>\
-        </td>\
-        <td><span class="text-secondary" style="font-size:0.85rem">Unit price: </span>' + formatMoney(price, p.currency) + '</td>\
-        <td>\
-          ' + (stock <= 0 ? '<span class="product-stock out">Unavailable</span>' : '\
-            <div style="display:flex;align-items:center;gap:0.5rem">\
-              <label style="font-size:0.8rem;color:var(--text-secondary)">Qty:</label>\
-              <div style="display:flex;align-items:center;gap:0.3rem"><label style="font-size:0.8rem;color:var(--text-secondary)">Qty:</label><input type="number" value="' + r.quantity + '" min="1" max="' + stock + '" data-id="' + r.id + '" class="cart-qty form-input" style="width:60px"></div>\
-              <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity - 1) + ')" ' + (r.quantity <= 1 ? 'disabled' : '') + ' aria-label="Decrease quantity">&minus;</button>\
-              <button class="btn-ghost btn-sm" onclick="updateItem(' + JSON.stringify(r.id) + ', ' + (r.quantity + 1) + ')" ' + (stock <= r.quantity ? 'disabled' : '') + ' aria-label="Increase quantity">&plus;</button>\
-            </div>\
-          ') + '\
-        </td>\
-        <td><span class="text-secondary" style="font-size:0.85rem">Line total: </span>' + formatMoney(line, p.currency) + '</td>\
-        <td><button class="btn-ghost btn-sm" onclick="removeItem(' + JSON.stringify(r.id) + ')" style="color:var(--danger)">Remove</button></td>\
-      </tr>';
+    const cur = p.currency || 'USD';
+    html += `
+      <article class="cart-item-card">
+        <div class="cart-item-media">
+          <a href="product.html?id=${escapeHtml(p.id || '')}"><img src="${escapeHtml(img ? img.url : '/images/placeholder.svg')}" alt="" onerror="this.src='/images/placeholder.svg'"></a>
+        </div>
+        <div class="cart-item-body">
+          <h3 class="cart-item-title"><a href="product.html?id=${escapeHtml(p.id || '')}">${escapeHtml(p.name || 'Product')}</a></h3>
+          <p class="cart-item-meta">by ${escapeHtml(p.shops?.name || 'a maker')}</p>
+          ${stock <= 0 ? '<p class="cart-item-meta" style="color:var(--danger);margin-top:0.25rem">Sold out</p>' : ''}
+          <div class="cart-item-prices">
+            <span>Unit: <strong>${formatMoney(price, cur)}</strong></span>
+            <span>Line: <strong>${formatMoney(line, cur)}</strong></span>
+          </div>
+        </div>
+        <div class="cart-item-actions">
+          ${stock <= 0 ? '<span class="product-stock out">Unavailable</span>' : `
+            <div class="cart-qty-row">
+              <label style="font-size:0.8rem;color:var(--text-secondary)">Qty</label>
+              <input type="number" value="${r.quantity}" min="1" max="${stock}" data-id="${escapeHtml(r.id)}" class="cart-qty form-input">
+            </div>
+          `}
+          <button class="btn btn-ghost btn-sm" onclick="removeItem('${escapeHtml(String(r.id))}')" style="color:var(--danger)">Remove</button>
+        </div>
+      </article>`;
   });
-  html += '</tbody></table></div>';
+  html += '</div>';
   itemsWrap.innerHTML = html;
-  subtotalEl.innerHTML = '<span style="color:var(--text-secondary)">Subtotal (' + rows.reduce((s, r) => s + r.quantity, 0) + ' item' + (rows.reduce((s, r) => s + r.quantity, 0) !== 1 ? 's' : '') + '): </span>' + formatMoney(subtotal, rows[0].products.currency || 'USD');
-  totalEl.innerHTML = '<span style="font-weight:700">Total: </span>' + formatMoney(subtotal, rows[0].products.currency || 'USD');
-  updateCartCount(rows.reduce((s, r) => s + r.quantity, 0));
+  itemsWrap.querySelectorAll('.cart-qty').forEach(inp => {
+    inp.addEventListener('change', () => window.updateItem(inp.dataset.id, parseInt(inp.value, 10) || 1));
+  });
+  const currency = (rows[0]?.products?.currency) || 'USD';
+  const count = rows.reduce((s, r) => s + (r.quantity || 0), 0);
+  subtotalEl.innerHTML = '<span style="color:var(--text-secondary)">Subtotal (' + count + ' item' + (count !== 1 ? 's' : '') + ')</span><strong>' + formatMoney(subtotal, currency) + '</strong>';
+  totalEl.innerHTML = '<span style="font-weight:700">Total</span><strong>' + formatMoney(subtotal, currency) + '</strong>';
+  updateCartCount(count);
 }
+
+if (sortSelect) sortSelect.addEventListener('change', () => renderCart(cartRows));
 
 window.updateItem = async (itemId, qty) => {
   if (qty < 1) { removeItem(itemId); return; }

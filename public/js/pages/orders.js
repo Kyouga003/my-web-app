@@ -1,6 +1,6 @@
 // Buyer order history + order detail
 import { supabase } from '/js/init.js';
-import { formatMoney, formatDateTime, escapeHtml } from '/js/ui.js';
+import { formatMoney, formatDateTime, escapeHtml, showToast } from '/js/ui.js';
 import { renderAuthLinks, updateCartCount } from '/js/nav.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -11,6 +11,21 @@ const listEl = document.getElementById('orders-list');
 const detailEl = document.getElementById('orders-detail');
 const loadingEl = document.getElementById('orders-loading');
 const requireLoginEl = document.getElementById('orders-require-login');
+const contentBox = document.getElementById('orders-content-box');
+const sortSelect = document.getElementById('orders-sort');
+let orderRows = [];
+
+function cmp(a,b,key,dir){ let av=a[key],bv=b[key]; if(key==='created_at'){ av=av?new Date(av).getTime():0; bv=bv?new Date(bv).getTime():0; } if(typeof av==='string') av=String(av).toLowerCase(); if(typeof bv==='string') bv=String(bv).toLowerCase(); if(av==null&&bv==null) return 0; if(av==null) return 1; if(bv==null) return -1; return (av<bv?-1:av>bv?1:0)*dir; }
+function sortedOrders(rows, mode) {
+  const list = rows.slice();
+  if (mode==='date-asc') list.sort((a,b)=>cmp(a,b,'created_at',1));
+  else if (mode==='total-desc') list.sort((a,b)=>cmp(a,b,'total_cents',-1));
+  else if (mode==='total-asc') list.sort((a,b)=>cmp(a,b,'total_cents',1));
+  else if (mode==='alpha-asc') list.sort((a,b)=>cmp(a,b,'order_number',1));
+  else if (mode==='alpha-desc') list.sort((a,b)=>cmp(a,b,'order_number',-1));
+  else list.sort((a,b)=>cmp(a,b,'created_at',-1));
+  return list;
+}
 
 function showSetup(message) {
   const b = document.getElementById('setup-banner');
@@ -38,11 +53,10 @@ window.addEventListener('authstate', async () => {
     return;
   }
   requireLoginEl.style.display = 'none';
-  loadOrders();
+  if (!viewId) loadOrders();
 });
 
 async function fetchJson(path) {
-  const { currentUser } = await import('/js/init.js');
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch(path, { headers: session ? { Authorization: 'Bearer ' + session.access_token } : {} });
   if (!res.ok) throw new Error(res.statusText || 'Request failed');
@@ -51,26 +65,26 @@ async function fetchJson(path) {
 
 function statusChip(status) {
   const map = { pending_payment: 'status-pending', paid: 'status-paid', processing: 'status-paid', shipped: 'status-shipped', completed: 'status-completed', cancelled: 'status-cancelled', refunded: 'status-cancelled' };
-  return '<span class="status-chip ' + map[status] + '">' + status.replace('_', ' ') + '</span>';
+  return '<span class="status-chip ' + (map[status] || 'status-pending') + '">' + String(status || '').replace('_', ' ') + '</span>';
 }
 
-async function loadOrders() {
-  try {
-    const rows = await fetchJson('/api/orders');
-    loadingEl.style.display = 'none';
-    if (paid === '1') showToast('Order placed and payment confirmed.');
-    if (rows.length === 0) {
-      listEl.innerHTML = '<div class="empty-state"><h2>No orders yet</h2><p><a href="shop.html" class="btn btn-primary">Browse handmade goods</a></p></div>';
-      listEl.style.display = 'block';
-      return;
-    }
+function renderOrderList() {
+  const rows = sortedOrders(orderRows, sortSelect?.value || 'date-desc');
+  if (rows.length === 0) {
+    if (contentBox) contentBox.style.display = 'none';
+    listEl.innerHTML = '<div class="empty-state"><h2>No orders yet</h2><p><a href="shop.html" class="btn btn-primary">Browse handmade goods</a></p></div>';
     listEl.style.display = 'block';
-    listEl.innerHTML = rows.map(o => `
-      <div style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    return;
+  }
+  if (contentBox) contentBox.style.display = 'block';
+  listEl.style.display = 'block';
+  listEl.innerHTML = rows.map(o => `
+    <article class="order-card">
+      <div class="flex-between" style="flex-wrap:wrap;gap:1rem">
         <div>
-          <div style="font-weight:600">Order #${escapeHtml(o.order_number)}</div>
-          <div class="text-secondary" style="font-size:0.85rem">${formatDateTime(o.created_at)}</div>
-          ${o.order_items && o.order_items.length ? '<div style="font-size:0.9rem;color:var(--text-secondary);margin-top:0.25rem">' + o.order_items.map(oi => oi.product_name_snapshot + ' ×' + oi.quantity).join(', ') + '</div>' : ''}
+          <div style="font-weight:700">Order #${escapeHtml(String(o.order_number || ''))}</div>
+          <div class="text-secondary" style="font-size:0.875rem">${formatDateTime(o.created_at)}</div>
+          ${o.order_items && o.order_items.length ? '<div style="font-size:0.9rem;color:var(--text-secondary);margin-top:0.35rem">' + o.order_items.map(oi => escapeHtml(oi.product_name_snapshot) + ' ×' + oi.quantity).join(', ') + '</div>' : ''}
         </div>
         <div class="flex" style="align-items:center;gap:0.75rem;flex-wrap:wrap">
           ${statusChip(o.status)}
@@ -78,9 +92,20 @@ async function loadOrders() {
           <a href="orders.html?id=${o.id}" class="btn btn-sm btn-ghost">View</a>
         </div>
       </div>
-    `).join('');
+    </article>
+  `).join('');
+}
+
+async function loadOrders() {
+  try {
+    const rows = await fetchJson('/api/orders');
+    loadingEl.style.display = 'none';
+    if (paid === '1') showToast('Order placed and payment confirmed.');
+    orderRows = rows || [];
+    renderOrderList();
   } catch (err) {
     loadingEl.style.display = 'none';
+    if (contentBox) contentBox.style.display = 'none';
     listEl.style.display = 'block';
     listEl.innerHTML = '<div class="empty-state"><h2>Unable to load orders</h2><p>' + escapeHtml(err.message) + '</p></div>';
   }
@@ -90,6 +115,7 @@ async function loadOrderDetail(id) {
   try {
     const o = await fetchJson('/api/orders/' + id);
     loadingEl.style.display = 'none';
+    if (contentBox) contentBox.style.display = 'none';
     detailEl.style.display = 'block';
     const itemsHtml = (o.order_items || []).map(oi => `
       <tr>
@@ -104,7 +130,7 @@ async function loadOrderDetail(id) {
     }
     if (o.tracking_number) actions += '<span style="color:var(--text-secondary)">Tracking: ' + escapeHtml(o.tracking_number) + '</span>';
     detailEl.innerHTML = `
-      <h2>Order #${escapeHtml(o.order_number)}</h2>
+      <h2 style="margin-top:0">Order #${escapeHtml(String(o.order_number || ''))}</h2>
       <p class="text-secondary">${formatDateTime(o.created_at)} · ${statusChip(o.status)}</p>
       <div class="table-wrap"><table><thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>${itemsHtml}</tbody></table></div>
       <div class="flex-between" style="margin-top:1rem"><span>Total</span><span style="font-weight:700">${formatMoney(o.total_cents, o.currency)}</span></div>
@@ -122,7 +148,7 @@ async function loadOrderDetail(id) {
 window.cancelOrder = async (id) => {
   if (!confirm('Cancel this order? Stock will be restored for available items.')) return;
   try {
-    const { data: { session } } = await (await import('/js/init.js')).supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch('/api/orders/' + id + '/cancel', {
       method: 'PATCH',
       headers: { 'Authorization': 'Bearer ' + session.access_token }
@@ -135,5 +161,6 @@ window.cancelOrder = async (id) => {
   }
 };
 
-if (viewId) { loadOrderDetail(viewId); } else { loadOrders(); }
+if (sortSelect) sortSelect.addEventListener('change', renderOrderList);
+if (viewId) { loadOrderDetail(viewId); } else { /* list loads on authstate */ }
 loadDbStatus();

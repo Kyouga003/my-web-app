@@ -66,27 +66,58 @@
   <!-- Featured Products -->
   <section class="section">
     <div class="container">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title">Handpicked Creations</h2>
-          <p class="section-subtitle">Curated pieces from our talented artisans</p>
+      <div class="content-box">
+        <div class="section-header" style="margin-bottom: var(--space-6);">
+          <div>
+            <h2 class="section-title">Handpicked Creations</h2>
+            <p class="section-subtitle">Curated pieces from our talented artisans</p>
+          </div>
+          <a href="shop.html" class="btn btn-ghost">View All <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12L10 8L6 4"/></svg></a>
         </div>
-        <a href="shop.html" class="btn btn-ghost">View All <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12L10 8L6 4"/></svg></a>
+        <div class="list-toolbar">
+          <div class="list-toolbar-left"><span class="text-secondary" style="font-size:0.875rem">Featured listings</span></div>
+          <div class="list-toolbar-right">
+            <div class="sort-control">
+              <label for="featured-sort">Sort</label>
+              <select id="featured-sort" class="form-select">
+                <option value="newest">Date added: newest</option>
+                <option value="oldest">Date added: oldest</option>
+                <option value="alpha-asc">Alphabetical: A–Z</option>
+                <option value="alpha-desc">Alphabetical: Z–A</option>
+                <option value="price-asc">Price: low to high</option>
+                <option value="price-desc">Price: high to low</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="featured-grid" class="products-grid"></div>
       </div>
-      <div id="featured-grid" class="products-grid"></div>
     </div>
   </section>
 
   <!-- Categories -->
   <section class="section section-alt">
     <div class="container">
-      <div class="section-header centered">
-        <div>
-          <h2 class="section-title">Shop by Category</h2>
-          <p class="section-subtitle">Find the perfect handmade piece for any occasion</p>
+      <div class="content-box" style="background: rgba(255,255,255,0.92);">
+        <div class="section-header centered" style="margin-bottom: var(--space-6);">
+          <div>
+            <h2 class="section-title">Shop by Category</h2>
+            <p class="section-subtitle">Find the perfect handmade piece for any occasion</p>
+          </div>
         </div>
+        <div class="list-toolbar" style="justify-content:flex-end">
+          <div class="sort-control">
+            <label for="category-sort">Sort</label>
+            <select id="category-sort" class="form-select">
+              <option value="alpha-asc">Alphabetical: A–Z</option>
+              <option value="alpha-desc">Alphabetical: Z–A</option>
+              <option value="newest">Date added: newest</option>
+              <option value="oldest">Date added: oldest</option>
+            </select>
+          </div>
+        </div>
+        <div id="category-grid" class="categories-grid"></div>
       </div>
-      <div id="category-grid" class="categories-grid"></div>
     </div>
   </section>
 
