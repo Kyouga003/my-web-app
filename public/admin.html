@@ -32,7 +32,7 @@
       <div class="metric-card"><div class="label">Reports</div><div class="value" id="admin-reports">-</div></div>
     </div>
     <div class="admin-review-grid">
-      <section class="admin-review-panel" aria-labelledby="account-queue-title">
+      <section class="content-box admin-review-panel" aria-labelledby="account-queue-title">
         <div class="admin-panel-heading">
           <div><p class="product-cat">MEMBERS</p><h3 id="account-queue-title">Account applications</h3></div>
           <label class="admin-filter-label" for="account-status-filter">View
@@ -46,7 +46,7 @@
         </div>
         <div id="admin-account-list" class="admin-queue-list" aria-live="polite"></div>
       </section>
-      <section class="admin-review-panel" aria-labelledby="product-queue-title">
+      <section class="content-box admin-review-panel" aria-labelledby="product-queue-title">
         <div class="admin-panel-heading">
           <div><p class="product-cat">LISTING SAFETY</p><h3 id="product-queue-title">Product review</h3></div>
           <span id="pending-product-count" class="badge badge-outline">0 pending</span>
@@ -55,11 +55,11 @@
       </section>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem">
+      <div class="content-box">
         <h3 style="margin-top:0">Reported content</h3>
         <div id="reports-list"></div>
       </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem">
+      <div class="content-box">
         <h3 style="margin-top:0">Recent activity</h3>
         <div id="activity-list"></div>
       </div>

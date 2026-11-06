@@ -24,9 +24,9 @@
   <div id="checkout-loading" class="loading-state" style="text-align:center"><div class="skeleton-lg"></div></div>
   <div id="checkout-empty" class="empty-state" style="display:none"><h2>Your cart is empty</h2><p><a href="shop.html" class="btn btn-primary">Browse handmade goods</a></p></div>
   <div id="checkout-form-wrap" style="display:none">
-    <div class="grid grid-cols-2">
+    <div class="grid grid-cols-2" style="gap:1.5rem;align-items:start">
       <div>
-        <form id="checkout-form" class="surface-alt" style="padding:1.5rem;border-radius:var(--radius-lg);border:1px solid var(--border)">
+        <form id="checkout-form" class="content-box">
           <h3 style="margin-top:0">Shipping details</h3>
           <div class="form-group">
             <label>Full name</label>
@@ -58,7 +58,7 @@
         </form>
       </div>
       <div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;position:sticky;top:80px">
+        <div class="content-box" style="position:sticky;top:80px">
           <h3 style="margin-top:0">Order summary</h3>
           <div id="checkout-items"></div>
           <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0">

@@ -22,51 +22,53 @@
     <p><a href="login.html?next=profile.html">Sign in</a> to manage your profile.</p>
   </div>
   <div id="profile-wrap" style="display:none">
-    <div class="grid grid-cols-2">
-      <div style="display:flex;flex-direction:column;align-items:center">
-        <img id="profile-avatar" src="" width="120" height="120" style="border-radius:50%;border:1px solid var(--border);object-fit:cover;background:var(--warm-beige)" alt="Profile picture">
-        <div class="image-upload" style="width:100%;max-width:260px;margin-top:0.75rem">
-          <input type="file" id="profile-avatar-file" accept="image/*">
-          <div style="font-size:0.85rem;color:var(--text-secondary)">Upload profile picture</div>
+    <div class="content-box" style="margin-bottom:1.5rem">
+      <div class="grid grid-cols-2">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <img id="profile-avatar" src="" width="120" height="120" style="border-radius:50%;border:1px solid var(--border);object-fit:cover;background:var(--warm-beige)" alt="Profile picture">
+          <div class="image-upload" style="width:100%;max-width:260px;margin-top:0.75rem">
+            <input type="file" id="profile-avatar-file" accept="image/*">
+            <div style="font-size:0.85rem;color:var(--text-secondary)">Upload profile picture</div>
+          </div>
+        </div>
+        <div>
+          <form id="profile-form">
+            <div class="form-group">
+              <label>Display name</label>
+              <input type="text" id="profile-name" name="display_name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="profile-email" name="email" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Bio</label>
+              <textarea id="profile-bio" name="bio" class="form-textarea"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Role</label>
+              <span id="profile-role" style="font-size:0.9rem;color:var(--text-secondary)"></span>
+            </div>
+            <div class="form-group">
+              <label>Account approval</label>
+              <span id="profile-approval-status" class="badge badge-outline">Loading</span>
+            </div>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+          </form>
         </div>
       </div>
-      <div>
-        <form id="profile-form">
-          <div class="form-group">
-            <label>Display name</label>
-            <input type="text" id="profile-name" name="display_name" class="form-input" required>
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="profile-email" name="email" class="form-input" required>
-          </div>
-          <div class="form-group">
-            <label>Bio</label>
-            <textarea id="profile-bio" name="bio" class="form-textarea"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Role</label>
-            <span id="profile-role" style="font-size:0.9rem;color:var(--text-secondary)"></span>
-          </div>
-          <div class="form-group">
-            <label>Account approval</label>
-            <span id="profile-approval-status" class="badge badge-outline">Loading</span>
-          </div>
-          <button type="submit" class="btn btn-primary">Save changes</button>
-        </form>
-      </div>
     </div>
-    <div style="margin-top:2rem">
-      <h3>Your activity</h3>
+    <div class="content-box" style="margin-bottom:1.5rem">
+      <h3 style="margin-top:0">Your activity</h3>
       <div class="stat-grid">
         <div class="metric-card"><div class="label">Orders</div><div class="value" id="stat-orders">-</div></div>
         <div class="metric-card"><div class="label">Favorites</div><div class="value" id="stat-favorites">-</div></div>
         <div class="metric-card"><div class="label">Member since</div><div class="value" id="stat-member">-</div></div>
       </div>
-      <p class="form-hint">Need to open a shop? <a href="seller-dashboard.html">Start selling</a>.</p>
+      <p class="form-hint" style="margin-bottom:0">Need to open a shop? <a href="seller-dashboard.html">Start selling</a>.</p>
     </div>
-    <section id="admin-messages" class="admin-messages-panel" aria-labelledby="admin-messages-title">
-      <div class="admin-panel-heading"><div><p class="product-cat">ACCOUNT SUPPORT</p><h3 id="admin-messages-title">Messages from administration</h3></div></div>
+    <section id="admin-messages" class="content-box admin-messages-panel" style="margin-top:0" aria-labelledby="admin-messages-title">
+      <div class="admin-panel-heading"><div><p class="product-cat">ACCOUNT SUPPORT</p><h3 id="admin-messages-title" style="margin:0">Messages from administration</h3></div></div>
       <div id="admin-messages-list" class="admin-queue-list" aria-live="polite"></div>
     </section>
   </div>

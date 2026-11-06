@@ -76,12 +76,14 @@ async function loadProduct() {
   if (p.processing_time) attrs.push({ label: 'Processing time', value: p.processing_time });
   if (p.shipping_info) attrs.push({ label: 'Shipping', value: p.shipping_info });
   const attrEl = document.getElementById('product-attrs');
-  attrEl.innerHTML = attrs.length ? '<h4 style="margin-bottom:0.75rem">Product details</h4>' + attrs.map(a => `
-    <div style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--border)">
+  attrEl.innerHTML = attrs.length ? '<h4 style="margin:0 0 0.75rem">Product details</h4>' + attrs.map(a => `
+    <div style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--border);gap:1rem">
       <span style="color:var(--text-secondary);font-weight:500">${escapeHtml(a.label)}</span>
       <span style="text-align:right;max-width:60%">${escapeHtml(a.value)}</span>
-    </div>`).join('') : '';
+    </div>`).join('') : '<p class="text-secondary" style="margin:0">No additional details provided.</p>';
 
+  const stock = p.quantity == null ? 0 : p.quantity;
+  const stockEl = document.getElementById('product-stock');
   if (stock <= 0) stockEl.innerHTML = '<div class="product-stock out" style="color:var(--danger)">Sold out</div>';
   else if (stock <= 3) stockEl.innerHTML = '<div class="product-stock low" style="color:var(--warning)">Only ' + stock + ' left in stock</div>';
   else stockEl.innerHTML = '<div class="text-secondary" style="font-size:0.9rem">' + stock + ' in stock</div>';

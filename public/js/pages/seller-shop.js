@@ -59,7 +59,8 @@ async function loadShop() {
   permalink.href = window.location.href;
   permalink.textContent = window.location.href;
 
-  banner.innerHTML = '<div style="padding:1.5rem;background:var(--pale-lilac);border-radius:var(--radius-lg);border:1px solid var(--border)"><h1 style="margin:0">' + escapeHtml(shop.name) + '</h1><p style="margin:0.5rem 0 0;color:var(--text-secondary)">by ' + escapeHtml(shop.profiles?.display_name || 'A maker') + '</p></div>';
+  const banner = document.getElementById('shop-banner');
+  if (banner) banner.innerHTML = '<div style="padding:1.5rem;background:var(--pale-lilac);border-radius:var(--radius-lg);border:1px solid var(--border)"><p style="margin:0;color:var(--text-secondary);font-size:0.875rem">Maker shop</p></div>';
 
   const { data: products } = await supabase
     .from('products')

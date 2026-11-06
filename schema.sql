@@ -976,8 +976,12 @@ on conflict (slug) do nothing;
 -- 1. Run `node scripts/bootstrap-admin.js` from the project root to create or
 --    promote an administrator. The script sets both the profile role and the
 --    signed app_metadata claim required by admin RLS; sign in again afterward.
--- 2. Email confirmations / password-reset emails depend on SMTP settings in your
+-- 2. Run `node scripts/seed-demo.js` (requires SUPABASE_URL and
+--    SUPABASE_SERVICE_ROLE_KEY in .env) to create a demo seller shop and 20+
+--    categorized, published sample listings with varied prices, stock, and dates.
+--    Safe to run more than once; it updates matching demo listings.
+-- 3. Email confirmations / password-reset emails depend on SMTP settings in your
 --    Supabase project (Authentication > Email Templates).
--- 3. The 'product-images' bucket is public. Uploads are handled from the browser
+-- 4. The 'product-images' bucket is public. Uploads are handled from the browser
 --    with the Supabase anon key; RLS keeps uploads safe.
 -- ============================================================================

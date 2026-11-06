@@ -104,8 +104,10 @@ async function loadFeatured() {
     const { data, error } = await supabase
       .from('products')
       .select('*, product_images(*), categories(name)')
+      .eq('status', 'published')
+      .eq('moderation_status', 'approved')
       .order('created_at', { ascending: false })
-      .limit(8);
+      .limit(12);
     if (error) throw error;
     featuredRows = data || [];
     renderFeatured();

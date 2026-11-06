@@ -18,6 +18,10 @@ function showSellerWorkspace(visible) {
   orderHeading.style.display = visible ? 'flex' : 'none';
   recentEl.style.display = visible ? 'block' : 'none';
   productsHeading.style.display = visible ? 'block' : 'none';
+  const recentBox = document.getElementById('seller-recent-box');
+  const productsBox = document.getElementById('seller-products-box');
+  if (recentBox) recentBox.style.display = visible ? 'block' : 'none';
+  if (productsBox) productsBox.style.display = visible ? 'block' : 'none';
 }
 
 function showSetup(message) {
