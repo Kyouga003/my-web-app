@@ -1208,6 +1208,9 @@ input[type="checkbox"] { accent-color: var(--brand-purple); }
   margin-bottom: var(--space-4);
 }
 
+.footer-logo .brand-logo { height: 40px; width: auto; max-width: 220px; object-fit: contain; display: block; }
+.footer-logo .brand-fallback { display: inline-flex; align-items: center; gap: var(--space-3); }
+
 .footer-logo .brand-mark {
   width: 40px;
   height: 40px;

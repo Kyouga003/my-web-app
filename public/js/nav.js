@@ -100,9 +100,9 @@ export function renderHeader({ currentPage: page } = {}) {
   header.className = 'site-header';
   header.innerHTML =
     '<div class="header-inner">' +
-    '<a href="index.html" class="brand">' +
-    '<span class="brand-mark" aria-hidden="true">&#10027;</span>' +
-    '<span>YouMadeIt</span>' +
+    '<a href="index.html" class="brand" aria-label="YouMadeIt home">' +
+    '<img src="/images/YouMadeIt!.png" alt="YouMadeIt" class="brand-logo" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\'">' +
+    '<span class="brand-fallback" style="display:none"><span class="brand-mark" aria-hidden="true">&#10027;</span><span>YouMadeIt</span></span>' +
     '</a>' +
     '<ul class="nav-list" aria-label="Main navigation"></ul>' +
     '<div class="nav-actions">' +
